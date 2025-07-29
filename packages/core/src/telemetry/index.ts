@@ -26,6 +26,13 @@ export {
   logApiError,
   logApiResponse,
   logFlashFallback,
+  logConcurrentSyntaxDetected,
+  logParallelExecutionStarted,
+  logParallelExecutionCompleted,
+  logConcurrentCallCompleted,
+  logFileLockAcquired,
+  logFileLockReleased,
+  logRetryAttempt,
 } from './loggers.js';
 export {
   StartSessionEvent,
@@ -37,6 +44,13 @@ export {
   ApiResponseEvent,
   TelemetryEvent,
   FlashFallbackEvent,
+  ConcurrentSyntaxDetectedEvent,
+  ParallelExecutionStartedEvent,
+  ParallelExecutionCompletedEvent,
+  ConcurrentCallCompletedEvent,
+  FileLockAcquiredEvent,
+  FileLockReleasedEvent,
+  RetryAttemptEvent,
 } from './types.js';
 export { SpanStatusCode, ValueType } from '@opentelemetry/api';
 export { SemanticAttributes } from '@opentelemetry/semantic-conventions';

@@ -14,6 +14,7 @@ import {
   Tool,
   GenerateContentResponse,
 } from '@google/genai';
+import { partToString } from '../utils/partUtils.js';
 import { getFolderStructure } from '../utils/getFolderStructure.js';
 import {
   Turn,
@@ -44,7 +45,16 @@ import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { LoopDetectionService } from '../services/loopDetectionService.js';
 import { ideContext } from '../services/ideContext.js';
 import { logFlashDecidedToContinue } from '../telemetry/loggers.js';
-import { FlashDecidedToContinueEvent } from '../telemetry/types.js';
+
+interface ConcurrentCall {
+  id: string;
+  prompt: string;
+}
+import {
+  FlashDecidedToContinueEvent,
+  ConcurrentSyntaxDetectedEvent,
+} from '../telemetry/types.js';
+import { logConcurrentSyntaxDetected } from '../telemetry/loggers.js';
 
 function isThinkingSupported(model: string) {
   if (model.startsWith('gemini-2.5')) return true;
@@ -357,6 +367,17 @@ export class GeminiClient {
       }
     }
 
+    // Check for concurrent syntax
+    const concurrencyAnalysis = this.parseConcurrentSyntax(request, prompt_id);
+    if (concurrencyAnalysis.hasConcurrentCalls) {
+      // For now, we'll just log that concurrent calls were detected
+      // In a later increment, we'll implement the actual concurrent execution
+      console.log('Concurrent calls detected:', concurrencyAnalysis.calls);
+      // Log the telemetry event
+      const event = new ConcurrentSyntaxDetectedEvent(prompt_id, concurrencyAnalysis.calls);
+      logConcurrentSyntaxDetected(this.config, event);
+    }
+
     const turn = new Turn(this.getChat(), prompt_id);
 
     const loopDetected = await this.loopDetector.turnStarted(signal);
@@ -405,6 +426,66 @@ export class GeminiClient {
       }
     }
     return turn;
+  }
+
+  /**
+   * Parses concurrent syntax from a PartListUnion request.
+   *
+   * @param request - The request to parse for concurrent syntax
+   * @param prompt_id - The prompt ID for telemetry logging
+   * @returns An object indicating if concurrent calls were detected and the parsed calls
+   */
+  private parseConcurrentSyntax(
+    request: PartListUnion,
+    prompt_id?: string,
+  ): {
+    hasConcurrentCalls: boolean;
+    calls: ConcurrentCall[];
+  } {
+    // Extract text from the request
+    const text = partToString(request);
+
+    // Check if concurrency is enabled in config
+    if (!this.config.getConcurrencyEnabled()) {
+      return { hasConcurrentCalls: false, calls: [] };
+    }
+
+    // Check for forced processing mode
+    const forcedMode = this.config.getForcedProcessingMode();
+    if (forcedMode === 'sequential') {
+      return { hasConcurrentCalls: false, calls: [] };
+    }
+
+    // Regular expression to match callN: prompt patterns
+    // This regex looks for callN: followed by text, ending either at another callN: or at the end of string
+    // Updated to handle concurrent calls embedded within larger text contexts
+    const concurrentCallRegex =
+      /(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g;
+    const matches = [...text.matchAll(concurrentCallRegex)];
+
+    // If we found matches, create the calls array
+    if (matches.length > 0) {
+      const calls: ConcurrentCall[] = matches.map((match) => ({
+        id: match[1],
+        prompt: match[2].trim(),
+      }));
+
+      // Note: Telemetry logging is handled in sendMessageStream for interactive CLI
+      // and in nonInteractiveCli.ts for non-interactive CLI
+
+      // Log diagnostic information in debug mode
+      if (this.config.getDebugMode()) {
+        console.log(`Concurrent syntax detected in prompt ${prompt_id}:`, {
+          callCount: calls.length,
+          calls: calls.map((call) => ({ id: call.id, prompt: call.prompt })),
+        });
+      }
+
+      return { hasConcurrentCalls: true, calls };
+    }
+
+    // No concurrent calls found
+    return { hasConcurrentCalls: false, calls: [] };
   }
 
   async generateJson(

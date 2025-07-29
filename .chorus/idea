@@ -1,0 +1,53 @@
+# debugging
+
+improve the debugger and make it the only mode that deals with issues. when the
+debugger is called it needs to now:
+- what was the error/issues
+- what was the command that was executed that resulted in the issues
+- what are we trying to achieve in the current phase
+- what resources/files are involved in the current changes. 
+- what was the previous state that worked (potentially we can create a diff
+  tool) for that
+- what documentation is relevant
+
+issues can probably be categorized into the following categories (which may help
+find a solution)
+
+- environment setup issues
+- build failures and test failures
+- unexpected functionality
+
+the debugger should first plan out most likely error scenarios and rank them by
+likelihood. 
+than try them one by one. 
+track everything we tried in the issue tracker including
+  - what was tried, 
+  - what was the result
+  - what did we learn
+
+after a fix did not work: analyze again the remeining likely fixes and evalueate
+if those still make sense, are still similarly likely or if new porbable fixes
+  are apparent.
+
+after resolving an issue we shoudl note how we resolved it and what information
+would have been relevant in the first place to not get this issue.
+
+probably return the learnings to the orchestrator
+
+
+
+
+
+
+
+Orchestrator needs to be instruczred that issues have to be directed to the
+dbeugger
+other modes have to be instructed that when an issue occurs they return to the
+orchestartor with all relevant informaiton. 
+
+
+
+# other improvemnets
+- we need git actions -> instruct orchestrator accoringly
+- when executing commands make sure you are in the cirrect folder (tool could check this or have specific parameter for this), same with read file
+- project setup mode: how to build, folder structure, system, package versions, is there a logging or telemttry system? is there a proper build pipeline, test pipeline

@@ -19,6 +19,7 @@ import {
   FlashFallbackEvent,
   LoopDetectedEvent,
   FlashDecidedToContinueEvent,
+  ConcurrentSyntaxDetectedEvent,
 } from '../types.js';
 import { EventMetadataKey } from './event-metadata-key.js';
 import { Config } from '../../config/config.js';
@@ -39,6 +40,7 @@ const end_session_event_name = 'end_session';
 const flash_fallback_event_name = 'flash_fallback';
 const loop_detected_event_name = 'loop_detected';
 const flash_decided_to_continue_event_name = 'flash_decided_to_continue';
+const concurrent_syntax_detected_event_name = 'concurrent_syntax_detected';
 
 export interface LogResponse {
   nextRequestWaitMs?: number;
@@ -537,6 +539,24 @@ export class ClearcutLogger {
     } else {
       throw new Error('Unsupported proxy type');
     }
+  }
+
+  logConcurrentSyntaxDetectedEvent(event: ConcurrentSyntaxDetectedEvent): void {
+    const data = [
+      {
+        gemini_cli_key: EventMetadataKey.GEMINI_CLI_PROMPT_ID,
+        value: JSON.stringify(event.prompt_id),
+      },
+      {
+        gemini_cli_key: EventMetadataKey.GEMINI_CLI_CONCURRENT_CALL_COUNT,
+        value: JSON.stringify(event.call_count),
+      },
+    ];
+
+    this.enqueueLogEvent(
+      this.createLogEvent(concurrent_syntax_detected_event_name, data),
+    );
+    this.flushIfNeeded();
   }
 
   shutdown() {

@@ -28,6 +28,13 @@ import {
   FlashFallbackEvent,
   FlashDecidedToContinueEvent,
   LoopDetectedEvent,
+  ConcurrentSyntaxDetectedEvent,
+  ParallelExecutionStartedEvent,
+  ParallelExecutionCompletedEvent,
+  ConcurrentCallCompletedEvent,
+  FileLockAcquiredEvent,
+  FileLockReleasedEvent,
+  RetryAttemptEvent,
 } from './types.js';
 import {
   recordApiErrorMetrics,
@@ -184,6 +191,165 @@ export function logFlashFallback(
   logger.emit(logRecord);
 }
 
+export function logParallelExecutionStarted(
+  config: Config,
+  event: ParallelExecutionStartedEvent,
+): void {
+  // TODO: Implement ClearcutLogger integration
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'parallel_execution_started',
+    'event.timestamp': event['event.timestamp'],
+    prompt_id: event.prompt_id,
+    execution_id: event.execution_id,
+    call_count: event.call_count,
+    max_concurrent_calls: event.max_concurrent_calls,
+    retry_enabled: event.retry_enabled,
+  };
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `Parallel execution started. Call count: ${event.call_count}. Max concurrent calls: ${event.max_concurrent_calls}.`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
+export function logParallelExecutionCompleted(
+  config: Config,
+  event: ParallelExecutionCompletedEvent,
+): void {
+  // TODO: Implement ClearcutLogger integration
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'parallel_execution_completed',
+    'event.timestamp': event['event.timestamp'],
+    prompt_id: event.prompt_id,
+    execution_id: event.execution_id,
+    call_count: event.call_count,
+    success_count: event.success_count,
+    error_count: event.error_count,
+    retry_count: event.retry_count,
+    total_duration_ms: event.total_duration_ms,
+  };
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `Parallel execution completed. Success: ${event.success_count}/${event.call_count}. Errors: ${event.error_count}. Retries: ${event.retry_count}. Duration: ${event.total_duration_ms}ms.`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
+export function logConcurrentCallCompleted(
+  config: Config,
+  event: ConcurrentCallCompletedEvent,
+): void {
+  // TODO: Implement ClearcutLogger integration
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'concurrent_call_completed',
+    'event.timestamp': event['event.timestamp'],
+    prompt_id: event.prompt_id,
+    execution_id: event.execution_id,
+    call_id: event.call_id,
+    success: event.success,
+    duration_ms: event.duration_ms,
+    retry_count: event.retry_count,
+  };
+
+  if (event.error_message) {
+    attributes['error.message'] = event.error_message;
+  }
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `Concurrent call ${event.call_id} completed. Success: ${event.success}. Duration: ${event.duration_ms}ms. Retries: ${event.retry_count}.`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
+export function logFileLockAcquired(
+  config: Config,
+  event: FileLockAcquiredEvent,
+): void {
+  // TODO: Implement ClearcutLogger integration
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'file_lock_acquired',
+    'event.timestamp': event['event.timestamp'],
+    call_id: event.call_id,
+    file_path: event.file_path,
+    lock_id: event.lock_id,
+  };
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `File lock acquired for ${event.file_path} by call ${event.call_id}.`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
+export function logFileLockReleased(
+  config: Config,
+  event: FileLockReleasedEvent,
+): void {
+  // TODO: Implement ClearcutLogger integration
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'file_lock_released',
+    'event.timestamp': event['event.timestamp'],
+    call_id: event.call_id,
+    file_path: event.file_path,
+    lock_id: event.lock_id,
+    duration_ms: event.duration_ms,
+  };
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `File lock released for ${event.file_path} by call ${event.call_id}. Duration: ${event.duration_ms}ms.`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
+export function logRetryAttempt(
+  config: Config,
+  event: RetryAttemptEvent,
+): void {
+  // TODO: Implement ClearcutLogger integration
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'retry_attempt',
+    'event.timestamp': event['event.timestamp'],
+    call_id: event.call_id,
+    attempt_number: event.attempt_number,
+    error_message: event.error_message,
+    next_retry_ms: event.next_retry_ms,
+  };
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `Retry attempt ${event.attempt_number} for call ${event.call_id}. Next retry in ${event.next_retry_ms}ms. Error: ${event.error_message}`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
 export function logApiError(config: Config, event: ApiErrorEvent): void {
   const uiEvent = {
     ...event,
@@ -328,6 +494,29 @@ export function logFlashDecidedToContinue(
   const logger = logs.getLogger(SERVICE_NAME);
   const logRecord: LogRecord = {
     body: `Flash decided to continue.`,
+    attributes,
+  };
+  logger.emit(logRecord);
+}
+
+export function logConcurrentSyntaxDetected(
+  config: Config,
+  event: ConcurrentSyntaxDetectedEvent,
+): void {
+  ClearcutLogger.getInstance(config)?.logConcurrentSyntaxDetectedEvent(event);
+  if (!isTelemetrySdkInitialized()) return;
+
+  const attributes: LogAttributes = {
+    ...getCommonAttributes(config),
+    'event.name': 'concurrent_syntax_detected',
+    'event.timestamp': event['event.timestamp'],
+    prompt_id: event.prompt_id,
+    call_count: event.call_count,
+  };
+
+  const logger = logs.getLogger(SERVICE_NAME);
+  const logRecord: LogRecord = {
+    body: `Concurrent syntax detected. Call count: ${event.call_count}.`,
     attributes,
   };
   logger.emit(logRecord);

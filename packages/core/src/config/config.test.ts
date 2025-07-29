@@ -312,4 +312,41 @@ describe('Server Config (config.ts)', () => {
       expect(config.getTelemetryOtlpEndpoint()).toBe(DEFAULT_OTLP_ENDPOINT);
     });
   });
+
+  describe('Concurrency Configuration', () => {
+    it('should have default concurrency settings when not provided', () => {
+      const config = new Config(baseParams);
+      expect(config.getConcurrencyEnabled()).toBe(true);
+      expect(config.getMaxConcurrentCalls()).toBe(3);
+      expect(config.getForcedProcessingMode()).toBeUndefined();
+    });
+
+    it('should use provided concurrency settings', () => {
+      const paramsWithConcurrency: ConfigParameters = {
+        ...baseParams,
+        concurrency: {
+          enabled: false,
+          maxConcurrentCalls: 5,
+          forceProcessing: 'concurrent',
+        },
+      };
+      const config = new Config(paramsWithConcurrency);
+      expect(config.getConcurrencyEnabled()).toBe(false);
+      expect(config.getMaxConcurrentCalls()).toBe(5);
+      expect(config.getForcedProcessingMode()).toBe('concurrent');
+    });
+
+    it('should use default values for missing concurrency settings', () => {
+      const paramsWithPartialConcurrency: ConfigParameters = {
+        ...baseParams,
+        concurrency: {
+          enabled: false,
+        },
+      };
+      const config = new Config(paramsWithPartialConcurrency);
+      expect(config.getConcurrencyEnabled()).toBe(false);
+      expect(config.getMaxConcurrentCalls()).toBe(3); // default
+      expect(config.getForcedProcessingMode()).toBeUndefined(); // default
+    });
+  });
 });

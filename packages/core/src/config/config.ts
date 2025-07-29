@@ -63,6 +63,23 @@ export interface BugCommandSettings {
   urlTemplate: string;
 }
 
+export interface ConcurrencyConfig {
+  enabled?: boolean;
+  maxConcurrentCalls?: number;
+  forceProcessing?: 'sequential' | 'concurrent';
+  retryConfig?: {
+    maxRetries?: number;
+    backoffMs?: number;
+    exponentialBackoff?: boolean;
+    retryableErrors?: string[];
+  };
+  fileLocking?: {
+    enabled?: boolean;
+    timeoutMs?: number;
+    lockDirectory?: string;
+  };
+}
+
 export interface SummarizeToolOutputSettings {
   tokenBudget?: number;
 }
@@ -174,6 +191,7 @@ export interface ConfigParameters {
   noBrowser?: boolean;
   summarizeToolOutput?: Record<string, SummarizeToolOutputSettings>;
   ideMode?: boolean;
+  concurrency?: ConcurrencyConfig;
 }
 
 export class Config {
@@ -229,6 +247,22 @@ export class Config {
     | Record<string, SummarizeToolOutputSettings>
     | undefined;
   private readonly experimentalAcp: boolean = false;
+  private readonly concurrency: {
+    enabled: boolean;
+    maxConcurrentCalls: number;
+    forceProcessing?: 'sequential' | 'concurrent';
+    retryConfig: {
+      maxRetries: number;
+      backoffMs: number;
+      exponentialBackoff: boolean;
+      retryableErrors: string[];
+    };
+    fileLocking: {
+      enabled: boolean;
+      timeoutMs: number;
+      lockDirectory: string;
+    };
+  };
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -280,6 +314,23 @@ export class Config {
     this.noBrowser = params.noBrowser ?? false;
     this.summarizeToolOutput = params.summarizeToolOutput;
     this.ideMode = params.ideMode ?? false;
+
+    this.concurrency = {
+      enabled: params.concurrency?.enabled ?? true,
+      maxConcurrentCalls: params.concurrency?.maxConcurrentCalls ?? 3,
+      forceProcessing: params.concurrency?.forceProcessing,
+      retryConfig: {
+        maxRetries: params.concurrency?.retryConfig?.maxRetries ?? 3,
+        backoffMs: params.concurrency?.retryConfig?.backoffMs ?? 1000,
+        exponentialBackoff: params.concurrency?.retryConfig?.exponentialBackoff ?? true,
+        retryableErrors: params.concurrency?.retryConfig?.retryableErrors ?? ['429', '500', '502', '503', '504', 'ECONNRESET', 'ETIMEDOUT'],
+      },
+      fileLocking: {
+        enabled: params.concurrency?.fileLocking?.enabled ?? true,
+        timeoutMs: params.concurrency?.fileLocking?.timeoutMs ?? 30000,
+        lockDirectory: params.concurrency?.fileLocking?.lockDirectory ?? this.getProjectTempDir(),
+      },
+    };
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -626,6 +677,26 @@ export class Config {
 
     await registry.discoverTools();
     return registry;
+  }
+
+  getConcurrencyEnabled(): boolean {
+    return this.concurrency.enabled;
+  }
+
+  getMaxConcurrentCalls(): number {
+    return this.concurrency.maxConcurrentCalls;
+  }
+
+  getForcedProcessingMode(): 'sequential' | 'concurrent' | undefined {
+    return this.concurrency.forceProcessing;
+  }
+
+  getRetryConfig() {
+    return this.concurrency.retryConfig;
+  }
+
+  getFileLockingConfig() {
+    return this.concurrency.fileLocking;
   }
 }
 // Export model constants for use in CLI

@@ -163,6 +163,9 @@ export enum EventMetadataKey {
 
   // Logs the type of loop detected.
   GEMINI_CLI_LOOP_DETECTED_TYPE = 38,
+
+  // Logs the number of concurrent calls detected.
+  GEMINI_CLI_CONCURRENT_CALL_COUNT = 41,
 }
 
 export function getEventMetadataKey(

@@ -32,6 +32,7 @@ import {
   logUserPrompt,
   logToolCall,
   logFlashFallback,
+  logConcurrentSyntaxDetected,
 } from './loggers.js';
 import {
   ApiRequestEvent,
@@ -41,6 +42,7 @@ import {
   ToolCallEvent,
   UserPromptEvent,
   FlashFallbackEvent,
+  ConcurrentSyntaxDetectedEvent,
 } from './types.js';
 import * as metrics from './metrics.js';
 import * as sdk from './sdk.js';
@@ -747,6 +749,37 @@ describe('loggers', () => {
         ...event,
         'event.name': EVENT_TOOL_CALL,
         'event.timestamp': '2025-01-01T00:00:00.000Z',
+      });
+    });
+  });
+
+  describe('logConcurrentSyntaxDetected', () => {
+    const mockConfig = {
+      getSessionId: () => 'test-session-id',
+      getTargetDir: () => 'target-dir',
+      getUsageStatisticsEnabled: () => true,
+      getTelemetryEnabled: () => true,
+      getTelemetryLogPromptsEnabled: () => true,
+    } as Config;
+
+    it('should log a concurrent syntax detected event', () => {
+      const calls = [
+        { id: 'call1', prompt: 'Analyze security' },
+        { id: 'call2', prompt: 'Check performance' },
+      ];
+      const event = new ConcurrentSyntaxDetectedEvent('prompt-id-1', calls);
+
+      logConcurrentSyntaxDetected(mockConfig, event);
+
+      expect(mockLogger.emit).toHaveBeenCalledWith({
+        body: 'Concurrent syntax detected. Call count: 2.',
+        attributes: {
+          'session.id': 'test-session-id',
+          'event.name': 'concurrent_syntax_detected',
+          'event.timestamp': '2025-01-01T00:00:00.000Z',
+          prompt_id: 'prompt-id-1',
+          call_count: 2,
+        },
       });
     });
   });

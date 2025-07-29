@@ -24,6 +24,7 @@ import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
 import { setSimulate429 } from '../utils/testUtils.js';
 import { tokenLimit } from './tokenLimits.js';
 import { ideContext } from '../services/ideContext.js';
+import { logConcurrentSyntaxDetected } from '../telemetry/loggers.js';
 
 // --- Mocks ---
 const mockChatCreateFn = vi.fn();
@@ -73,6 +74,10 @@ vi.mock('../telemetry/index.js', () => ({
   logApiError: vi.fn(),
 }));
 vi.mock('../services/ideContext.js');
+vi.mock('../telemetry/loggers.js', () => ({
+  logConcurrentSyntaxDetected: vi.fn(),
+  logFlashDecidedToContinue: vi.fn(),
+}));
 
 describe('findIndexAfterFraction', () => {
   const history: Content[] = [
@@ -201,6 +206,11 @@ describe('Gemini Client (client.ts)', () => {
       getUsageStatisticsEnabled: vi.fn().mockReturnValue(true),
       getIdeMode: vi.fn().mockReturnValue(false),
       getGeminiClient: vi.fn(),
+      getConcurrencyEnabled: vi.fn().mockReturnValue(true),
+      getMaxConcurrentCalls: vi.fn().mockReturnValue(3),
+      getForcedProcessingMode: vi.fn().mockReturnValue(undefined),
+      getDebugMode: vi.fn().mockReturnValue(false),
+      getTelemetryEnabled: vi.fn().mockReturnValue(true),
     };
     const MockedConfig = vi.mocked(Config, true);
     MockedConfig.mockImplementation(
@@ -983,6 +993,159 @@ Here are files the user has recently opened, with the most recent at the top:
           `${eventCount} events generated (properly bounded by MAX_TURNS)`,
       );
     });
+
+    it('should log concurrent syntax detected telemetry when concurrent calls are found', async () => {
+      // Arrange
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Response to concurrent calls' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      // Mock telemetry logging function
+      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      mockLogConcurrentSyntaxDetected.mockClear();
+
+      // Act - Call sendMessageStream with concurrent syntax
+      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      const stream = client.sendMessageStream(
+        concurrentRequest,
+        new AbortController().signal,
+        'test-prompt-id',
+      );
+
+      // Consume the stream
+      for await (const _ of stream) {
+        // consume stream
+      }
+
+      // Assert - Verify that logConcurrentSyntaxDetected was called
+      expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledTimes(1);
+      expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledWith(
+        expect.any(Object), // config
+        expect.objectContaining({
+          'event.name': 'concurrent_syntax_detected',
+          prompt_id: 'test-prompt-id',
+          call_count: 2,
+          calls: [
+            { id: 'call1', prompt: 'What is TypeScript?' },
+            { id: 'call2', prompt: 'What is JavaScript?' }
+          ]
+        })
+      );
+    });
+
+    it('should fail to log concurrent telemetry when config disables concurrency', async () => {
+      // Arrange - Create a mock config that disables concurrency (like real acceptance test scenario)
+      const mockConfigWithDisabledConcurrency = {
+        ...client['config'],
+        getConcurrencyEnabled: vi.fn().mockReturnValue(false), // This is likely the issue
+      };
+      client['config'] = mockConfigWithDisabledConcurrency as any;
+
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Response without concurrent processing' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      // Mock telemetry logging function
+      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      mockLogConcurrentSyntaxDetected.mockClear();
+
+      // Act - Call sendMessageStream with concurrent syntax
+      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      const stream = client.sendMessageStream(
+        concurrentRequest,
+        new AbortController().signal,
+        'test-prompt-id',
+      );
+
+      // Consume the stream
+      for await (const _ of stream) {
+        // consume stream
+      }
+
+      // Assert - Verify that logConcurrentSyntaxDetected was NOT called due to disabled concurrency
+      expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledTimes(0);
+    });
+
+    it('should detect concurrent syntax in complex context like acceptance test', async () => {
+      // Arrange - Simulate the real acceptance test scenario
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Response to concurrent calls' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      // Mock telemetry logging function
+      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      mockLogConcurrentSyntaxDetected.mockClear();
+
+      // Act - Test with text that mimics the acceptance test scenario
+      const complexRequest = [{
+        text: 'This is the Gemini CLI. We are setting up the context for our chat.\nToday\'s date is Thursday, July 24, 2025.\nMy operating system is: linux\nI\'m currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli\n\nGot it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?'
+      }];
+      
+      const stream = client.sendMessageStream(
+        complexRequest,
+        new AbortController().signal,
+        'test-prompt-complex',
+      );
+
+      // Consume the stream
+      for await (const _ of stream) {
+        // consume stream
+      }
+
+      // Assert - This should pass if the regex correctly handles complex context
+      expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledTimes(1);
+      expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledWith(
+        expect.any(Object), // config
+        expect.objectContaining({
+          'event.name': 'concurrent_syntax_detected',
+          prompt_id: 'test-prompt-complex',
+          call_count: 2,
+          calls: [
+            { id: 'call1', prompt: 'What is TypeScript?' },
+            { id: 'call2', prompt: 'What is JavaScript?' }
+          ]
+        })
+      );
+    });
   });
 
   describe('generateContent', () => {
@@ -1094,6 +1257,248 @@ Here are files the user has recently opened, with the most recent at the top:
         fallbackModel,
         undefined,
       );
+    });
+  });
+
+  describe('parseConcurrentSyntax', () => {
+    it('should detect concurrent calls with valid syntax', () => {
+      const request = [
+        { text: 'call1: Analyze security, call2: Check performance' },
+      ];
+      const result = client['parseConcurrentSyntax'](request);
+      expect(result.hasConcurrentCalls).toBe(true);
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0]).toEqual({
+        id: 'call1',
+        prompt: 'Analyze security',
+      });
+      expect(result.calls[1]).toEqual({
+        id: 'call2',
+        prompt: 'Check performance',
+      });
+    });
+
+    it('should return false when no concurrent calls are detected', () => {
+      const request = [{ text: 'Regular prompt without concurrent syntax' }];
+      const result = client['parseConcurrentSyntax'](request);
+      expect(result.hasConcurrentCalls).toBe(false);
+      expect(result.calls).toHaveLength(0);
+    });
+
+    it('should handle empty request', () => {
+      const request = [{ text: '' }];
+      const result = client['parseConcurrentSyntax'](request);
+      expect(result.hasConcurrentCalls).toBe(false);
+      expect(result.calls).toHaveLength(0);
+    });
+
+    it('should handle malformed syntax gracefully', () => {
+      const request = [
+        { text: 'call1 analyze security, call2 check performance' },
+      ]; // Missing colons
+      const result = client['parseConcurrentSyntax'](request);
+      expect(result.hasConcurrentCalls).toBe(false);
+      expect(result.calls).toHaveLength(0);
+    });
+
+    it('should handle single concurrent call', () => {
+      const request = [{ text: 'call1: Analyze security' }];
+      const result = client['parseConcurrentSyntax'](request);
+      expect(result.hasConcurrentCalls).toBe(true);
+      expect(result.calls).toHaveLength(1);
+      expect(result.calls[0]).toEqual({
+        id: 'call1',
+        prompt: 'Analyze security',
+      });
+    });
+
+    it('should handle complex prompts with commas', () => {
+      const request = [
+        {
+          text: 'call1: Analyze security, performance, and reliability, call2: Check code quality, style, and best practices',
+        },
+      ];
+      const result = client['parseConcurrentSyntax'](request);
+      expect(result.hasConcurrentCalls).toBe(true);
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0]).toEqual({
+        id: 'call1',
+        prompt: 'Analyze security, performance, and reliability',
+      });
+      expect(result.calls[1]).toEqual({
+        id: 'call2',
+        prompt: 'Check code quality, style, and best practices',
+      });
+    });
+
+    it('should debug the exact acceptance test scenario', () => {
+      // Test the exact text that appears in the acceptance test telemetry
+      const exactAcceptanceTestText = 'Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?';
+      const request = [{ text: exactAcceptanceTestText }];
+      
+      console.log('Testing exact acceptance test text:', JSON.stringify(exactAcceptanceTestText));
+      
+      const result = client['parseConcurrentSyntax'](request, 'debug-prompt-id');
+      
+      console.log('parseConcurrentSyntax result:', result);
+      
+      // This test should reveal why the regex is failing
+      expect(result.hasConcurrentCalls).toBe(true);
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0]).toEqual({
+        id: 'call1',
+        prompt: 'What is TypeScript?',
+      });
+      expect(result.calls[1]).toEqual({
+        id: 'call2',
+        prompt: 'What is JavaScript?',
+      });
+    });
+
+    it('should debug configuration issues in sendMessageStream flow', async () => {
+      // Test the full sendMessageStream flow to debug why telemetry isn't logged in acceptance test
+      
+      // Mock telemetry logging function
+      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      mockLogConcurrentSyntaxDetected.mockClear();
+
+      // Debug configuration - check if these might be the issue
+      console.log('Config getConcurrencyEnabled:', client['config'].getConcurrencyEnabled());
+      console.log('Config getForcedProcessingMode:', client['config'].getForcedProcessingMode());
+      console.log('Config getTelemetryEnabled:', client['config'].getTelemetryEnabled());
+      console.log('Config getDebugMode:', client['config'].getDebugMode());
+
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Response to concurrent calls' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      // Use the exact same prompt from acceptance test
+      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      
+      console.log('Testing sendMessageStream flow with concurrent request');
+      
+      const stream = client.sendMessageStream(
+        concurrentRequest,
+        new AbortController().signal,
+        'test-prompt-debug-flow',
+      );
+
+      // Consume the stream
+      for await (const _ of stream) {
+        // consume stream
+      }
+
+      // Debug the results
+      console.log('logConcurrentSyntaxDetected call count:', mockLogConcurrentSyntaxDetected.mock.calls.length);
+      if (mockLogConcurrentSyntaxDetected.mock.calls.length > 0) {
+        console.log('logConcurrentSyntaxDetected calls:', mockLogConcurrentSyntaxDetected.mock.calls);
+      }
+
+      // This should help us understand why the telemetry isn't working in the real flow
+      expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle concurrent syntax buried in massive context like real acceptance test', () => {
+      // Create a test that mimics the real acceptance test scenario with massive context
+      const massiveContext = `This is the Gemini CLI. We are setting up the context for our chat.
+  Today's date is Thursday, July 24, 2025.
+  My operating system is: linux
+  I'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli
+  Showing up to 200 items (files + folders). Folders or files indicated with ... contain more items not shown, were ignored, or the display limit (200 items) was reached.
+
+/home/julius/01_Private/02_Projects/gemini-cli/
+├───.editorconfig
+├───.gitattributes
+├───.gitignore
+├───.npmrc
+├───.nvmrc
+├───.prettierrc.json
+├───.roomodes
+├───CONTRIBUTING.md
+├───Dockerfile
+├───esbuild.config.js
+├───eslint.config.js
+├───GEMINI.md
+├───LICENSE
+├───Makefile
+├───package-lock.json
+├───package.json
+├───README.md
+├───ROADMAP.md
+├───tsconfig.json
+${'├───file-' + Array.from({length: 100}, (_, i) => i).join('.txt\n├───file-')}.txt
+Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?`;
+      
+      const request = [{ text: massiveContext }];
+      
+      console.log('Testing with massive context, text length:', massiveContext.length);
+      console.log('Last 200 chars:', JSON.stringify(massiveContext.slice(-200)));
+      
+      const result = client['parseConcurrentSyntax'](request, 'debug-massive-context');
+      
+      console.log('parseConcurrentSyntax result with massive context:', result);
+      
+      // This test should reveal if the regex fails with massive context
+      expect(result.hasConcurrentCalls).toBe(true);
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0]).toEqual({
+        id: 'call1',
+        prompt: 'What is TypeScript?',
+      });
+      expect(result.calls[1]).toEqual({
+        id: 'call2',
+        prompt: 'What is JavaScript?',
+      });
+    });
+
+    it('should handle concurrent syntax in multi-part request structure like real CLI', () => {
+      // Test the actual multi-part request structure that happens in real CLI
+      const environmentContext = `This is the Gemini CLI. We are setting up the context for our chat.
+  Today's date is Thursday, July 24, 2025.
+  My operating system is: linux
+  I'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli
+  [... massive file listing ...]`;
+      
+      const userPrompt = 'call1: What is TypeScript?, call2: What is JavaScript?';
+      
+      // This is how the request is structured in real CLI - as separate parts
+      const multiPartRequest = [
+        { text: environmentContext },
+        { text: userPrompt }
+      ];
+      
+      console.log('Testing multi-part request structure');
+      console.log('Part 1 length:', environmentContext.length);
+      console.log('Part 2:', JSON.stringify(userPrompt));
+      
+      const result = client['parseConcurrentSyntax'](multiPartRequest, 'debug-multipart');
+      
+      console.log('Multi-part parseConcurrentSyntax result:', result);
+      
+      // This test should reveal if the issue is with multi-part request structure
+      expect(result.hasConcurrentCalls).toBe(true);
+      expect(result.calls).toHaveLength(2);
+      expect(result.calls[0]).toEqual({
+        id: 'call1',
+        prompt: 'What is TypeScript?',
+      });
+      expect(result.calls[1]).toEqual({
+        id: 'call2',
+        prompt: 'What is JavaScript?',
+      });
     });
   });
 });
