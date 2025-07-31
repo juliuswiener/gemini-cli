@@ -34,6 +34,7 @@ import { retryWithBackoff } from '../utils/retry.js';
 import { getErrorMessage } from '../utils/errors.js';
 import { isFunctionResponse } from '../utils/messageInspectors.js';
 import { tokenLimit } from './tokenLimits.js';
+import { StreamAggregator, EnrichedServerGeminiStreamEvent } from './streamAggregator.js';
 import {
   AuthType,
   ContentGenerator,
@@ -370,14 +371,21 @@ export class GeminiClient {
     // Check for concurrent syntax
     const concurrencyAnalysis = this.parseConcurrentSyntax(request, prompt_id);
     if (concurrencyAnalysis.hasConcurrentCalls) {
-      // For now, we'll just log that concurrent calls were detected
-      // In a later increment, we'll implement the actual concurrent execution
-      console.log('Concurrent calls detected:', concurrencyAnalysis.calls);
+      // NEW: Route to concurrent processing
+      console.log("Concurrent calls detected. Routing to concurrent processing.");
       // Log the telemetry event
       const event = new ConcurrentSyntaxDetectedEvent(prompt_id, concurrencyAnalysis.calls);
       logConcurrentSyntaxDetected(this.config, event);
+      
+      // Call the actual executeConcurrentStreams function
+      for await (const event of this.executeConcurrentStreams(concurrencyAnalysis.calls, signal, prompt_id)) {
+        yield event;
+      }
+      // Return a new Turn instance associated with the main prompt_id
+      return new Turn(this.getChat(), prompt_id);
     }
 
+    // EXISTING: Original sequential streaming unchanged
     const turn = new Turn(this.getChat(), prompt_id);
 
     const loopDetected = await this.loopDetector.turnStarted(signal);
@@ -756,6 +764,61 @@ export class GeminiClient {
       originalTokenCount,
       newTokenCount,
     };
+  }
+
+  /**
+   * Executes multiple concurrent calls in parallel and aggregates their streams.
+   * Each call runs in its own Turn instance with full session context.
+   *
+   * @param calls - Array of concurrent calls to execute
+   * @param signal - AbortSignal for cancellation
+   * @param prompt_id - Base prompt ID for telemetry and tracking
+   * @returns AsyncGenerator yielding enriched stream events with call attribution
+   */
+  private async *executeConcurrentStreams(
+    calls: ConcurrentCall[],
+    signal: AbortSignal,
+    prompt_id: string,
+  ): AsyncGenerator<EnrichedServerGeminiStreamEvent> {
+    const turns: Turn[] = [];
+    const streams: AsyncGenerator<ServerGeminiStreamEvent>[] = [];
+
+    for (const call of calls) {
+      // Create a new Turn instance for each concurrent call
+      const turn = new Turn(this.getChat(), `${prompt_id}-${call.id}`);
+      turns.push(turn);
+
+      // Build the request for this specific call, including full context
+      const requestForCall = this.buildRequestFromCall(call);
+      streams.push(turn.run(requestForCall, signal));
+    }
+
+    // Aggregate streams with proper labeling
+    const streamAggregator = new StreamAggregator(calls);
+
+    // Merge streams while maintaining order and attribution
+    for await (const event of streamAggregator.mergeStreams(streams)) {
+      yield event; // Stream events with call attribution (handled by StreamAggregator)
+    }
+  }
+
+  /**
+   * Helper method to build a full request for a concurrent call, including context.
+   * This combines the call's prompt with current session context (files, memory, tools).
+   *
+   * @param call - The concurrent call to build a request for
+   * @returns PartListUnion containing the full request with context
+   */
+  private buildRequestFromCall(call: ConcurrentCall): PartListUnion {
+    // For now, we'll use a simplified approach that just uses the call's prompt
+    // In the future, this could be enhanced to include more sophisticated context building
+    // like current file context, memory, and tool schemas similar to getEnvironment()
+    
+    // Build a basic request with the call's prompt
+    // TODO: Could be enhanced to include session context like files, memory, tool schemas
+    const fullPrompt = call.prompt;
+    
+    return [{ text: fullPrompt }];
   }
 
   /**

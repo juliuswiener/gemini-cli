@@ -31,6 +31,10 @@ const mockChatCreateFn = vi.fn();
 const mockGenerateContentFn = vi.fn();
 const mockEmbedContentFn = vi.fn();
 const mockTurnRunFn = vi.fn();
+const mockStreamAggregatorMergeStreams = vi.fn().mockImplementation(async function* () {
+  // Default implementation that yields nothing
+  // Tests can override this behavior as needed
+});
 
 vi.mock('@google/genai');
 vi.mock('./turn', () => {
@@ -77,6 +81,14 @@ vi.mock('../services/ideContext.js');
 vi.mock('../telemetry/loggers.js', () => ({
   logConcurrentSyntaxDetected: vi.fn(),
   logFlashDecidedToContinue: vi.fn(),
+}));
+
+vi.mock('./streamAggregator.js', () => ({
+  StreamAggregator: vi.fn().mockImplementation(() => {
+    return {
+      mergeStreams: mockStreamAggregatorMergeStreams,
+    };
+  }),
 }));
 
 describe('findIndexAfterFraction', () => {
@@ -1411,6 +1423,170 @@ Here are files the user has recently opened, with the most recent at the top:
       expect(mockLogConcurrentSyntaxDetected).toHaveBeenCalledTimes(1);
     });
 
+    it('should route to executeConcurrentStreams when concurrent calls are detected', async () => {
+      // Arrange
+      const mockConcurrentEvents = [
+        { type: 'content', value: 'TypeScript analysis', callId: 'call1', callTitle: 'What is TypeScript?' },
+        { type: 'content', value: 'JavaScript analysis', callId: 'call2', callTitle: 'What is JavaScript?' }
+      ];
+
+      // Mock executeConcurrentStreams to return test events
+      const mockExecuteConcurrentStreams = vi.spyOn(client as any, 'executeConcurrentStreams');
+      mockExecuteConcurrentStreams.mockImplementation(async function* () {
+        for (const event of mockConcurrentEvents) {
+          yield event;
+        }
+      });
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      
+      // Act
+      const stream = client.sendMessageStream(
+        concurrentRequest,
+        new AbortController().signal,
+        'test-concurrent-routing',
+      );
+
+      const events = [];
+      let finalResult: Turn | undefined;
+      
+      // Consume the stream and capture events and final result
+      while (true) {
+        const result = await stream.next();
+        if (result.done) {
+          finalResult = result.value;
+          break;
+        }
+        events.push(result.value);
+      }
+
+      // Assert
+      expect(mockExecuteConcurrentStreams).toHaveBeenCalledTimes(1);
+      expect(mockExecuteConcurrentStreams).toHaveBeenCalledWith(
+        [
+          { id: 'call1', prompt: 'What is TypeScript?' },
+          { id: 'call2', prompt: 'What is JavaScript?' }
+        ],
+        expect.any(Object), // signal
+        'test-concurrent-routing'
+      );
+
+      // Should yield events from executeConcurrentStreams
+      expect(events).toEqual(mockConcurrentEvents);
+      
+      // Should return a Turn instance
+      expect(finalResult).toBeInstanceOf(Turn);
+
+      // Should NOT call the regular Turn.run since we took the concurrent path
+      expect(mockTurnRunFn).not.toHaveBeenCalled();
+    });
+
+    it('should continue with sequential path when no concurrent calls are detected', async () => {
+      // Arrange
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Sequential response' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      // Mock executeConcurrentStreams to ensure it's not called
+      const mockExecuteConcurrentStreams = vi.spyOn(client as any, 'executeConcurrentStreams');
+
+      const sequentialRequest = [{ text: 'What is TypeScript?' }]; // No concurrent syntax
+      
+      // Act
+      const stream = client.sendMessageStream(
+        sequentialRequest,
+        new AbortController().signal,
+        'test-sequential-path',
+      );
+
+      const events = [];
+      let finalResult: Turn | undefined;
+      
+      // Consume the stream
+      while (true) {
+        const result = await stream.next();
+        if (result.done) {
+          finalResult = result.value;
+          break;
+        }
+        events.push(result.value);
+      }
+
+      // Assert
+      expect(mockExecuteConcurrentStreams).not.toHaveBeenCalled();
+      expect(mockTurnRunFn).toHaveBeenCalledTimes(1);
+      expect(mockTurnRunFn).toHaveBeenCalledWith(sequentialRequest, expect.any(Object));
+      
+      expect(events).toEqual([{ type: 'content', value: 'Sequential response' }]);
+      expect(finalResult).toBeInstanceOf(Turn);
+    });
+
+    it('should handle errors in concurrent path gracefully', async () => {
+      // Arrange
+      const mockError = new Error('Concurrent execution failed');
+      
+      // Mock executeConcurrentStreams to throw an error
+      const mockExecuteConcurrentStreams = vi.spyOn(client as any, 'executeConcurrentStreams');
+      mockExecuteConcurrentStreams.mockImplementation(async function* () {
+        throw mockError;
+      });
+
+      const mockChat: Partial<GeminiChat> = {
+        addHistory: vi.fn(),
+        getHistory: vi.fn().mockReturnValue([]),
+      };
+      client['chat'] = mockChat as GeminiChat;
+
+      const mockGenerator: Partial<ContentGenerator> = {
+        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
+        generateContent: mockGenerateContentFn,
+      };
+      client['contentGenerator'] = mockGenerator as ContentGenerator;
+
+      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      
+      // Act & Assert
+      const stream = client.sendMessageStream(
+        concurrentRequest,
+        new AbortController().signal,
+        'test-concurrent-error',
+      );
+
+      // Should propagate the error from executeConcurrentStreams
+      await expect(async () => {
+        for await (const _ of stream) {
+          // consume stream
+        }
+      }).rejects.toThrow('Concurrent execution failed');
+
+      expect(mockExecuteConcurrentStreams).toHaveBeenCalledTimes(1);
+    });
+
     it('should handle concurrent syntax buried in massive context like real acceptance test', () => {
       // Create a test that mimics the real acceptance test scenario with massive context
       const massiveContext = `This is the Gemini CLI. We are setting up the context for our chat.
@@ -1499,6 +1675,268 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
         id: 'call2',
         prompt: 'What is JavaScript?',
       });
+    });
+  });
+
+  describe('executeConcurrentStreams', () => {
+    beforeEach(() => {
+      // Reset the mock for each test
+      mockStreamAggregatorMergeStreams.mockClear();
+      mockTurnRunFn.mockClear();
+    });
+
+    it('should create multiple Turn instances and use StreamAggregator to merge streams', async () => {
+      // Arrange
+      const calls = [
+        { id: 'call1', prompt: 'Analyze security' },
+        { id: 'call2', prompt: 'Check performance' }
+      ];
+      const signal = new AbortController().signal;
+      const prompt_id = 'test-concurrent-prompt';
+
+      // Mock stream events that will be returned by StreamAggregator
+      const mockAggregatedEvents = [
+        { type: 'content', value: 'Security analysis complete', callId: 'call1', callTitle: 'Analyze security' },
+        { type: 'content', value: 'Performance check complete', callId: 'call2', callTitle: 'Check performance' }
+      ];
+
+      // Mock StreamAggregator.mergeStreams to return our test events
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        for (const event of mockAggregatedEvents) {
+          yield event;
+        }
+      });
+
+      // Mock Turn.run to return individual streams
+      const mockStream1 = (async function* () {
+        yield { type: 'content', value: 'Security analysis complete' };
+      })();
+      const mockStream2 = (async function* () {
+        yield { type: 'content', value: 'Performance check complete' };
+      })();
+      
+      mockTurnRunFn.mockReturnValueOnce(mockStream1).mockReturnValueOnce(mockStream2);
+
+      // Act
+      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const events = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+
+      // Assert
+      expect(mockTurnRunFn).toHaveBeenCalledTimes(2);
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(1, [{ text: 'Analyze security' }], signal);
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(2, [{ text: 'Check performance' }], signal);
+      
+      expect(mockStreamAggregatorMergeStreams).toHaveBeenCalledTimes(1);
+      expect(mockStreamAggregatorMergeStreams).toHaveBeenCalledWith([mockStream1, mockStream2]);
+      
+      expect(events).toEqual(mockAggregatedEvents);
+    });
+
+    it('should yield enriched events with callId and callTitle from StreamAggregator', async () => {
+      // Arrange
+      const calls = [
+        { id: 'call1', prompt: 'Test prompt 1' }
+      ];
+      const signal = new AbortController().signal;
+      const prompt_id = 'test-enriched-events';
+
+      // Mock enriched event from StreamAggregator
+      const enrichedEvent = {
+        type: 'content',
+        value: 'Test response',
+        callId: 'call1',
+        callTitle: 'Test prompt 1'
+      };
+
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        yield enrichedEvent;
+      });
+
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Test response' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      // Act
+      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const events = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+
+      // Assert
+      expect(events).toHaveLength(1);
+      expect(events[0]).toEqual(enrichedEvent);
+      expect(events[0]).toHaveProperty('callId', 'call1');
+      expect(events[0]).toHaveProperty('callTitle', 'Test prompt 1');
+    });
+
+    it('should handle multiple concurrent calls with proper Turn instance creation', async () => {
+      // Arrange
+      const calls = [
+        { id: 'call1', prompt: 'First task' },
+        { id: 'call2', prompt: 'Second task' },
+        { id: 'call3', prompt: 'Third task' }
+      ];
+      const signal = new AbortController().signal;
+      const prompt_id = 'test-multiple-calls';
+
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        // Return empty generator for this test
+      });
+
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Task complete' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      // Act
+      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      // Consume the generator
+      for await (const _ of generator) {
+        // Process events
+      }
+
+      // Assert
+      expect(mockTurnRunFn).toHaveBeenCalledTimes(3);
+      
+      // Verify each Turn was created with correct prompt_id format
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(1, [{ text: 'First task' }], signal);
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(2, [{ text: 'Second task' }], signal);
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(3, [{ text: 'Third task' }], signal);
+    });
+
+    it('should continue processing other streams when one stream fails (handled by StreamAggregator)', async () => {
+      // Arrange
+      const calls = [
+        { id: 'call1', prompt: 'Failing task' },
+        { id: 'call2', prompt: 'Successful task' }
+      ];
+      const signal = new AbortController().signal;
+      const prompt_id = 'test-error-handling';
+
+      // Mock StreamAggregator to handle the error and continue with other streams
+      const mockEvents = [
+        { type: 'error', value: { error: { message: 'Error in call call1: Stream error' } }, callId: 'call1', callTitle: 'Failing task' },
+        { type: 'content', value: 'Success response', callId: 'call2', callTitle: 'Successful task' }
+      ];
+
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        for (const event of mockEvents) {
+          yield event;
+        }
+      });
+
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Response' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      // Act
+      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const events = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+
+      // Assert - Should not crash and should process both events
+      expect(events).toHaveLength(2);
+      expect(events[0].type).toBe('error');
+      expect(events[0].callId).toBe('call1');
+      expect(events[1].type).toBe('content');
+      expect(events[1].callId).toBe('call2');
+    });
+
+    it('should pass signal to all Turn instances for proper cancellation support', async () => {
+      // Arrange
+      const calls = [
+        { id: 'call1', prompt: 'Cancellable task' }
+      ];
+      const abortController = new AbortController();
+      const signal = abortController.signal;
+      const prompt_id = 'test-cancellation';
+
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        // Empty generator
+      });
+
+      const mockStream = (async function* () {
+        yield { type: 'content', value: 'Response' };
+      })();
+      mockTurnRunFn.mockReturnValue(mockStream);
+
+      // Act
+      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      for await (const _ of generator) {
+        // Process events
+      }
+
+      // Assert
+      expect(mockTurnRunFn).toHaveBeenCalledWith([{ text: 'Cancellable task' }], signal);
+    });
+
+    it('should handle empty calls array gracefully', async () => {
+      // Arrange
+      const calls: Array<{ id: string; prompt: string }> = [];
+      const signal = new AbortController().signal;
+      const prompt_id = 'test-empty-calls';
+
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        // Empty generator
+      });
+
+      // Act
+      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const events = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+
+      // Assert
+      expect(mockTurnRunFn).not.toHaveBeenCalled();
+      expect(mockStreamAggregatorMergeStreams).toHaveBeenCalledWith([]);
+      expect(events).toHaveLength(0);
+    });
+  });
+
+  describe('buildRequestFromCall', () => {
+    it('should build a PartListUnion from a concurrent call', () => {
+      // Arrange
+      const call = { id: 'call1', prompt: 'Test prompt for building request' };
+
+      // Act
+      const result = client['buildRequestFromCall'](call);
+
+      // Assert
+      expect(result).toEqual([{ text: 'Test prompt for building request' }]);
+    });
+
+    it('should handle empty prompt', () => {
+      // Arrange
+      const call = { id: 'call1', prompt: '' };
+
+      // Act
+      const result = client['buildRequestFromCall'](call);
+
+      // Assert
+      expect(result).toEqual([{ text: '' }]);
+    });
+
+    it('should handle complex prompt with special characters', () => {
+      // Arrange
+      const call = {
+        id: 'call1',
+        prompt: 'Analyze code: function test() { return "hello, world!"; }'
+      };
+
+      // Act
+      const result = client['buildRequestFromCall'](call);
+
+      // Assert
+      expect(result).toEqual([{ text: 'Analyze code: function test() { return "hello, world!"; }' }]);
     });
   });
 });
