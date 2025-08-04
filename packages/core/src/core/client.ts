@@ -34,7 +34,10 @@ import { retryWithBackoff } from '../utils/retry.js';
 import { getErrorMessage } from '../utils/errors.js';
 import { isFunctionResponse } from '../utils/messageInspectors.js';
 import { tokenLimit } from './tokenLimits.js';
-import { StreamAggregator, EnrichedServerGeminiStreamEvent } from './streamAggregator.js';
+import {
+  StreamAggregator,
+  EnrichedServerGeminiStreamEvent,
+} from './streamAggregator.js';
 import {
   AuthType,
   ContentGenerator,
@@ -372,13 +375,22 @@ export class GeminiClient {
     const concurrencyAnalysis = this.parseConcurrentSyntax(request, prompt_id);
     if (concurrencyAnalysis.hasConcurrentCalls) {
       // NEW: Route to concurrent processing
-      console.log("Concurrent calls detected. Routing to concurrent processing.");
+      console.log(
+        'Concurrent calls detected. Routing to concurrent processing.',
+      );
       // Log the telemetry event
-      const event = new ConcurrentSyntaxDetectedEvent(prompt_id, concurrencyAnalysis.calls);
+      const event = new ConcurrentSyntaxDetectedEvent(
+        prompt_id,
+        concurrencyAnalysis.calls,
+      );
       logConcurrentSyntaxDetected(this.config, event);
-      
+
       // Call the actual executeConcurrentStreams function
-      for await (const event of this.executeConcurrentStreams(concurrencyAnalysis.calls, signal, prompt_id)) {
+      for await (const event of this.executeConcurrentStreams(
+        concurrencyAnalysis.calls,
+        signal,
+        prompt_id,
+      )) {
         yield event;
       }
       // Return a new Turn instance associated with the main prompt_id
@@ -781,7 +793,7 @@ export class GeminiClient {
     prompt_id: string,
   ): AsyncGenerator<EnrichedServerGeminiStreamEvent> {
     const turns: Turn[] = [];
-    const streams: AsyncGenerator<ServerGeminiStreamEvent>[] = [];
+    const streams: Array<AsyncGenerator<ServerGeminiStreamEvent>> = [];
 
     for (const call of calls) {
       // Create a new Turn instance for each concurrent call
@@ -813,11 +825,11 @@ export class GeminiClient {
     // For now, we'll use a simplified approach that just uses the call's prompt
     // In the future, this could be enhanced to include more sophisticated context building
     // like current file context, memory, and tool schemas similar to getEnvironment()
-    
+
     // Build a basic request with the call's prompt
     // TODO: Could be enhanced to include session context like files, memory, tool schemas
     const fullPrompt = call.prompt;
-    
+
     return [{ text: fullPrompt }];
   }
 

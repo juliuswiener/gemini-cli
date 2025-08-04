@@ -156,161 +156,161 @@ export class ApiRequestEvent {
     this.prompt_id = prompt_id;
     this.request_text = request_text;
   }
+}
+
+export class ParallelExecutionStartedEvent {
+  'event.name': 'parallel_execution_started';
+  'event.timestamp': string; // ISO 8601
+  prompt_id: string;
+  execution_id: string;
+  call_count: number;
+  max_concurrent_calls: number;
+  retry_enabled: boolean;
+
+  constructor(
+    prompt_id: string,
+    execution_id: string,
+    call_count: number,
+    max_concurrent_calls: number,
+    retry_enabled: boolean,
+  ) {
+    this['event.name'] = 'parallel_execution_started';
+    this['event.timestamp'] = new Date().toISOString();
+    this.prompt_id = prompt_id;
+    this.execution_id = execution_id;
+    this.call_count = call_count;
+    this.max_concurrent_calls = max_concurrent_calls;
+    this.retry_enabled = retry_enabled;
   }
-  
-  export class ParallelExecutionStartedEvent {
-    'event.name': 'parallel_execution_started';
-    'event.timestamp': string; // ISO 8601
-    prompt_id: string;
-    execution_id: string;
-    call_count: number;
-    max_concurrent_calls: number;
-    retry_enabled: boolean;
-  
-    constructor(
-      prompt_id: string,
-      execution_id: string,
-      call_count: number,
-      max_concurrent_calls: number,
-      retry_enabled: boolean,
-    ) {
-      this['event.name'] = 'parallel_execution_started';
-      this['event.timestamp'] = new Date().toISOString();
-      this.prompt_id = prompt_id;
-      this.execution_id = execution_id;
-      this.call_count = call_count;
-      this.max_concurrent_calls = max_concurrent_calls;
-      this.retry_enabled = retry_enabled;
-    }
+}
+
+export class ParallelExecutionCompletedEvent {
+  'event.name': 'parallel_execution_completed';
+  'event.timestamp': string; // ISO 8601
+  prompt_id: string;
+  execution_id: string;
+  call_count: number;
+  success_count: number;
+  error_count: number;
+  retry_count: number;
+  total_duration_ms: number;
+
+  constructor(
+    prompt_id: string,
+    execution_id: string,
+    call_count: number,
+    success_count: number,
+    error_count: number,
+    retry_count: number,
+    total_duration_ms: number,
+  ) {
+    this['event.name'] = 'parallel_execution_completed';
+    this['event.timestamp'] = new Date().toISOString();
+    this.prompt_id = prompt_id;
+    this.execution_id = execution_id;
+    this.call_count = call_count;
+    this.success_count = success_count;
+    this.error_count = error_count;
+    this.retry_count = retry_count;
+    this.total_duration_ms = total_duration_ms;
   }
-  
-  export class ParallelExecutionCompletedEvent {
-    'event.name': 'parallel_execution_completed';
-    'event.timestamp': string; // ISO 8601
-    prompt_id: string;
-    execution_id: string;
-    call_count: number;
-    success_count: number;
-    error_count: number;
-    retry_count: number;
-    total_duration_ms: number;
-  
-    constructor(
-      prompt_id: string,
-      execution_id: string,
-      call_count: number,
-      success_count: number,
-      error_count: number,
-      retry_count: number,
-      total_duration_ms: number,
-    ) {
-      this['event.name'] = 'parallel_execution_completed';
-      this['event.timestamp'] = new Date().toISOString();
-      this.prompt_id = prompt_id;
-      this.execution_id = execution_id;
-      this.call_count = call_count;
-      this.success_count = success_count;
-      this.error_count = error_count;
-      this.retry_count = retry_count;
-      this.total_duration_ms = total_duration_ms;
-    }
+}
+
+export class ConcurrentCallCompletedEvent {
+  'event.name': 'concurrent_call_completed';
+  'event.timestamp': string; // ISO 8601
+  prompt_id: string;
+  execution_id: string;
+  call_id: string;
+  success: boolean;
+  duration_ms: number;
+  retry_count: number;
+  error_message?: string;
+
+  constructor(
+    prompt_id: string,
+    execution_id: string,
+    call_id: string,
+    success: boolean,
+    duration_ms: number,
+    retry_count: number,
+    error_message?: string,
+  ) {
+    this['event.name'] = 'concurrent_call_completed';
+    this['event.timestamp'] = new Date().toISOString();
+    this.prompt_id = prompt_id;
+    this.execution_id = execution_id;
+    this.call_id = call_id;
+    this.success = success;
+    this.duration_ms = duration_ms;
+    this.retry_count = retry_count;
+    this.error_message = error_message;
   }
-  
-  export class ConcurrentCallCompletedEvent {
-    'event.name': 'concurrent_call_completed';
-    'event.timestamp': string; // ISO 8601
-    prompt_id: string;
-    execution_id: string;
-    call_id: string;
-    success: boolean;
-    duration_ms: number;
-    retry_count: number;
-    error_message?: string;
-  
-    constructor(
-      prompt_id: string,
-      execution_id: string,
-      call_id: string,
-      success: boolean,
-      duration_ms: number,
-      retry_count: number,
-      error_message?: string,
-    ) {
-      this['event.name'] = 'concurrent_call_completed';
-      this['event.timestamp'] = new Date().toISOString();
-      this.prompt_id = prompt_id;
-      this.execution_id = execution_id;
-      this.call_id = call_id;
-      this.success = success;
-      this.duration_ms = duration_ms;
-      this.retry_count = retry_count;
-      this.error_message = error_message;
-    }
+}
+
+export class FileLockAcquiredEvent {
+  'event.name': 'file_lock_acquired';
+  'event.timestamp': string; // ISO 8601
+  call_id: string;
+  file_path: string;
+  lock_id: string;
+
+  constructor(call_id: string, file_path: string, lock_id: string) {
+    this['event.name'] = 'file_lock_acquired';
+    this['event.timestamp'] = new Date().toISOString();
+    this.call_id = call_id;
+    this.file_path = file_path;
+    this.lock_id = lock_id;
   }
-  
-  export class FileLockAcquiredEvent {
-    'event.name': 'file_lock_acquired';
-    'event.timestamp': string; // ISO 8601
-    call_id: string;
-    file_path: string;
-    lock_id: string;
-  
-    constructor(call_id: string, file_path: string, lock_id: string) {
-      this['event.name'] = 'file_lock_acquired';
-      this['event.timestamp'] = new Date().toISOString();
-      this.call_id = call_id;
-      this.file_path = file_path;
-      this.lock_id = lock_id;
-    }
+}
+
+export class FileLockReleasedEvent {
+  'event.name': 'file_lock_released';
+  'event.timestamp': string; // ISO 8601
+  call_id: string;
+  file_path: string;
+  lock_id: string;
+  duration_ms: number;
+
+  constructor(
+    call_id: string,
+    file_path: string,
+    lock_id: string,
+    duration_ms: number,
+  ) {
+    this['event.name'] = 'file_lock_released';
+    this['event.timestamp'] = new Date().toISOString();
+    this.call_id = call_id;
+    this.file_path = file_path;
+    this.lock_id = lock_id;
+    this.duration_ms = duration_ms;
   }
-  
-  export class FileLockReleasedEvent {
-    'event.name': 'file_lock_released';
-    'event.timestamp': string; // ISO 8601
-    call_id: string;
-    file_path: string;
-    lock_id: string;
-    duration_ms: number;
-  
-    constructor(
-      call_id: string,
-      file_path: string,
-      lock_id: string,
-      duration_ms: number,
-    ) {
-      this['event.name'] = 'file_lock_released';
-      this['event.timestamp'] = new Date().toISOString();
-      this.call_id = call_id;
-      this.file_path = file_path;
-      this.lock_id = lock_id;
-      this.duration_ms = duration_ms;
-    }
+}
+
+export class RetryAttemptEvent {
+  'event.name': 'retry_attempt';
+  'event.timestamp': string; // ISO 8601
+  call_id: string;
+  attempt_number: number;
+  error_message: string;
+  next_retry_ms: number;
+
+  constructor(
+    call_id: string,
+    attempt_number: number,
+    error_message: string,
+    next_retry_ms: number,
+  ) {
+    this['event.name'] = 'retry_attempt';
+    this['event.timestamp'] = new Date().toISOString();
+    this.call_id = call_id;
+    this.attempt_number = attempt_number;
+    this.error_message = error_message;
+    this.next_retry_ms = next_retry_ms;
   }
-  
-  export class RetryAttemptEvent {
-    'event.name': 'retry_attempt';
-    'event.timestamp': string; // ISO 8601
-    call_id: string;
-    attempt_number: number;
-    error_message: string;
-    next_retry_ms: number;
-  
-    constructor(
-      call_id: string,
-      attempt_number: number,
-      error_message: string,
-      next_retry_ms: number,
-    ) {
-      this['event.name'] = 'retry_attempt';
-      this['event.timestamp'] = new Date().toISOString();
-      this.call_id = call_id;
-      this.attempt_number = attempt_number;
-      this.error_message = error_message;
-      this.next_retry_ms = next_retry_ms;
-    }
-  }
-  
-  export class ApiErrorEvent {
+}
+
+export class ApiErrorEvent {
   'event.name': 'api_error';
   'event.timestamp': string; // ISO 8601
   model: string;

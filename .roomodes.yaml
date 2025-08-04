@@ -44,11 +44,11 @@ customModes:
       - The user aims to ensure their requirements are clear, concise, actionable, and optimally prepared for a development team to implement.
       - The overall pipeline flow indicates that user story definition is the next logical step (e.g., at the start of a new feature development cycle).
       - When existing user stories require review, breakdown, or further detail.
-    groups: 
-        - read
-        - - edit
-          - fileRegex:  \.(md|mdx)$
-            description: Allows editing of markdown files, including user stories.
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|mdx)$
+          description: Allows editing of markdown files, including user stories.
     source: project
   - slug: strategicplanner
     name: 🗺️ Strategic Planner
@@ -85,11 +85,11 @@ customModes:
       - When user stories have been fully validated and explicitly approved by the **user** (facilitated by the Storyteller Mode).
       - Prior to the initiation of any detailed technical research, architecture design, or direct code implementation, as this mode establishes the foundational strategic plan.
     description: Transform validated user stories into a high-level roadmap of actionable tasks
-    groups: 
-        - read
-        - - edit
-          - fileRegex: \.(md|mdx)$
-            description: Allows editing of markdown files.
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|mdx)$
+          description: Allows editing of markdown files.
 
     source: project
   - slug: researcher
@@ -140,20 +140,20 @@ customModes:
               Context: This ensures that research remains relevant and responsive to the evolving state of the project, preventing outdated information from leading to suboptimal decisions.
           Signal Completion:
               Instruction: Upon completing the research for a given uncertainty and updating the ./.dev-docs/research-log.md, signal to the Orchestrator that your task is complete and the output is ready for the next mode.
-              Context: Clear signaling facilitates smooth transitions and efficient delegation within the development pipeline.    
+              Context: Clear signaling facilitates smooth transitions and efficient delegation within the development pipeline.
     whenToUse: |-
       When the Strategic Planner Mode explicitly flags a technical uncertainty or unknown within an Iteration Plan that requires investigation.
       Prior to the Detailler Mode beginning detailed system design for a feature that has identified technical unknowns.
       Iteratively, when significant changes or new modules are introduced by the Coder Mode, to re-evaluate existing research or identify new research needs.
     description: Gather, compare, and evaluate various technical options for implementing planned features
-    groups:         
-        - read
-        - - edit
-          - fileRegex: \.(md|mdx)$
-            description: Allows editing of markdown files
-        - mcp
-        - browser
-        - command
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|mdx)$
+          description: Allows editing of markdown files
+      - mcp
+      - browser
+      - command
 
     source: project
   - slug: detailler
@@ -206,11 +206,11 @@ customModes:
       Before the Coder Mode begins implementation for tasks within an iteration that require a defined architectural approach.
       When a significant system change or new complex feature needs high-level structural design and subsequent task breakdown.
     description: Transform research insights and strategic plans into robust structural blueprints and actionable development tickets
-    groups: 
-        - read
-        - - edit
-          - fileRegex: \.(md|mdx)$
-            description: Allows editing of markdown files.
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|mdx)$
+          description: Allows editing of markdown files.
     source: project
   - slug: code
     name: 💻 Code
@@ -250,11 +250,11 @@ customModes:
       When specific tasks within the ./.dev-docs/tickets.md are marked as To Do and are ready for implementation.
       After Debugger Mode has provided a proposed fix for an issue, requiring code implementation.
     description: Translate detailed architectural plans and tasks into functional, robust, and maintainable code
-    groups: 
-        - read
-        - edit
-        - command
-        - mcp
+    groups:
+      - read
+      - edit
+      - command
+      - mcp
     source: project
   - slug: debugger
     name: 🐞 Debugger
@@ -307,11 +307,11 @@ customModes:
       When the Coder Mode reports an unexpected behavior, an unresolvable error, or an issue encountered during implementation.
       When a bug is discovered in a deployed system (e.g., from user reports or monitoring) and requires root cause analysis and a proposed solution.
     description: Analyze issues and bugs, isolate their root cause, and suggest minimal, clean, and effective fixes
-    groups:         
-        - read
-        - edit
-        - command
-        - mcp
+    groups:
+      - read
+      - edit
+      - command
+      - mcp
     source: project
   - slug: tester
     name: 🧪 Tester
@@ -359,12 +359,12 @@ customModes:
       After the Debugger Mode has proposed and the Coder Mode has implemented a fix for a bug, requiring re-verification.
       When a specific feature or module needs dedicated quality assurance before integration or release.
     description: Validate that the implemented software fulfills user needs and acceptance criteria
-    groups: 
-        - read
-        - - edit
-          - fileRegex: \.(md|mdx)$
-            description: Allows editing of markdown files
-        - command
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|mdx)$
+          description: Allows editing of markdown files
+      - command
     source: project
   - slug: documenter
     name: 📄 Documenter
@@ -394,12 +394,12 @@ customModes:
       When public APIs or core software behavior changes, requiring updates to user or developer guides.
       Before a software release, to ensure all new features and changes are documented.
     description: Translate implemented features and system behaviors into comprehensive documentation
-    groups: 
-        - read
-        - - edit
-          - fileRegex: \.(md|mdx)$
-            description: Allows editing of markdown files
-        - command
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.(md|mdx)$
+          description: Allows editing of markdown files
+      - command
 
     source: project
   - slug: projectinitializer
@@ -450,10 +450,10 @@ customModes:
       When there are significant changes to the project structure, dependencies, or build system that require updating the project context.
       When other modes report inconsistencies or missing information related to project setup or configuration.
     description: Analyze codebase and populate project-specifics.md with accurate technical context for all AI modes
-    groups: 
-        - read
-        - edit
-        - command
+    groups:
+      - read
+      - edit
+      - command
 
     source: project
   - slug: orchestrator

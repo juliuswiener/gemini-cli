@@ -1,10 +1,10 @@
 # Project Chorus: Issue Tracker
 
-| Increment | Issue                                           | Status    | Assigned To |
-| --------- | ----------------------------------------------- | --------- | ----------- |
-| 1         | Basic Syntax Parsing                           | Failed QA | Coder       |
-| 1         | Debug `parseConcurrentSyntax`                   | Complete  | Coder       |
-| 1         | Missing Concurrent Syntax Telemetry in CLI     | Complete  | Debug Specialist |
+| Increment | Issue                                      | Status    | Assigned To      |
+| --------- | ------------------------------------------ | --------- | ---------------- |
+| 1         | Basic Syntax Parsing                       | Failed QA | Coder            |
+| 1         | Debug `parseConcurrentSyntax`              | Complete  | Coder            |
+| 1         | Missing Concurrent Syntax Telemetry in CLI | Complete  | Debug Specialist |
 
 ## 2025-07-24 16:05 - Debug `parseConcurrentSyntax`
 
@@ -35,27 +35,32 @@ Description: The concurrent syntax telemetry event `concurrent_syntax_detected` 
 Error Message: `concurrent_syntax_detected` telemetry event missing from OpenTelemetry logs during acceptance testing with `--prompt "call1: What is TypeScript?, call2: What is JavaScript?"`
 
 Root Cause Analysis:
+
 - The Gemini API server has built-in concurrent syntax parsing that processes `"call1: ..., call2: ..."` syntax internally
 - The non-interactive CLI path (`runNonInteractive` in `packages/cli/src/nonInteractiveCli.ts`) was missing concurrent syntax detection and telemetry logging
 - The interactive CLI path already had concurrent syntax detection in `client.sendMessageStream`, but this was not used by the non-interactive path
 
 Files Affected:
+
 - `packages/cli/src/nonInteractiveCli.ts` (main implementation)
 - `packages/core/src/telemetry/index.ts` (export telemetry functions)
 - `packages/core/src/core/client.test.ts` (unit tests)
 
 Solution Applied:
+
 1. **Added concurrent syntax detection to non-interactive CLI**: Implemented regex parsing in `runNonInteractive` function to detect `callN: prompt` patterns
 2. **Integrated telemetry logging**: Used existing `ConcurrentSyntaxDetectedEvent` class and `logConcurrentSyntaxDetected` function to log telemetry events when concurrent syntax is detected
 3. **Exported telemetry functions**: Updated `packages/core/src/telemetry/index.ts` to export the required telemetry logging functions
 4. **Added comprehensive unit tests**: Created failing test in `client.test.ts` that verifies concurrent syntax detection and telemetry logging works correctly
 
 Technical Implementation:
+
 - **Regex Pattern**: `/(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g` to parse concurrent call syntax
 - **Telemetry Integration**: Reused existing telemetry infrastructure without code duplication
 - **Non-Intrusive Design**: Added detection early in `runNonInteractive` before API calls, ensuring telemetry is logged regardless of how the API processes the concurrent syntax
 
 Verification:
+
 - ✅ Unit tests pass (61/61 tests passing)
 - ✅ Acceptance test confirms `concurrent_syntax_detected` telemetry event is logged
 - ✅ Existing functionality preserved
@@ -63,6 +68,7 @@ Verification:
 
 Time to Resolution: 3 hours
 Prevention Notes:
+
 - Ensure telemetry coverage for all execution paths (interactive vs non-interactive)
 - Use acceptance tests to verify end-to-end telemetry functionality
 - Consider API-level vs client-level processing when implementing features

@@ -28,7 +28,7 @@
 
 ## 2. Test Cases and Results
 
-*This section details the execution of individual test cases.*
+_This section details the execution of individual test cases._
 
 ### Test Case: [e.g., TC-001: Single JPG to WebP Conversion - Happy Path]
 
@@ -43,21 +43,25 @@
 - **Status**: [PASS/FAIL/BLOCKED]
 
 #### Test Steps
+
 1.  [e.g., Place `input.jpg` in the test directory.]
 2.  [e.g., Execute CLI command: `python cli_app.py convert input.jpg output.webp --from jpg --to webp`]
 3.  [e.g., Verify `output.webp` exists in the test directory.]
 4.  [e.g., Open `output.webp` in an image viewer and confirm content.]
 
 #### Expected Outcome
+
 - The CLI command executes successfully without errors.
 - A new file named `output.webp` is created.
 - The original `input.jpg` file remains unchanged.
 - `output.webp` is a valid WebP image containing the converted content.
 
 #### Actual Outcome
+
 [Describe what actually happened. Be precise.]
 
 #### Verdict
+
 **[PASS/FAIL/BLOCKED]**
 
 ---
@@ -75,25 +79,29 @@
 - **Status**: [PASS/FAIL/BLOCKED]
 
 #### Test Steps
+
 1.  [e.g., Ensure `non_existent.jpg` does NOT exist in the test directory.]
 2.  [e.g., Execute CLI command: `python cli_app.py convert non_existent.jpg output.webp --from jpg --to webp`]
 
 #### Expected Outcome
+
 - The CLI command fails gracefully.
 - An error message indicating "Input file not found" or similar is displayed on the console.
 - No output file is created.
 
 #### Actual Outcome
+
 [Describe what actually happened. Be precise.]
 
 #### Verdict
+
 **[PASS/FAIL/BLOCKED]**
 
 ---
 
 ## 3. Identified Issues / Bugs
 
-*This section lists all issues found during testing, with detailed reproduction steps for the Debugger Mode.*
+_This section lists all issues found during testing, with detailed reproduction steps for the Debugger Mode._
 
 ### Issue: [e.g., BUG-001: Corrupted WebP Output]
 
@@ -104,11 +112,13 @@
 - **Related Test Case ID**: [e.g., TC-001]
 
 #### Description of Issue
-> *Example: "When converting a JPG image to WebP, the resulting .webp file is corrupted and cannot be opened by standard image viewers."*
+
+> _Example: "When converting a JPG image to WebP, the resulting .webp file is corrupted and cannot be opened by standard image viewers."_
 >
 > [Concise summary of the bug.]
 
 #### Steps to Reproduce (for Debugger)
+
 1.  [e.g., Use `sample.jpg` (attached/available in test data).]
 2.  [e.g., Run `python cli_app.py convert sample.jpg output.webp --from jpg --to webp`.]
 3.  [e.g., Attempt to open `output.webp` with any image viewer.]
@@ -117,15 +127,17 @@
 - **Actual Outcome**: `output.webp` is reported as corrupted or unreadable by image viewers.
 
 #### Relevant Error Messages/Logs
+
 ```
 [Paste relevant error messages, stack traces, or log snippets here.]
 ```
 
 #### Supporting Evidence
+
 - [Attach screenshot of corrupted file/error message, if applicable.]
 - [Link to specific log lines.]
 
-*... (Add more issues as needed, following the same structure.)*
+_... (Add more issues as needed, following the same structure.)_
 
 ---
 

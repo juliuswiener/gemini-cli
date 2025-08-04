@@ -20,11 +20,13 @@ This document contains project-specific information that is critical for all AI 
 ## 🖥️ System Information
 
 ### Operating System
+
 - **Primary OS**: Linux
 - **Supported OS**: Linux, macOS, Windows (implied by Node.js/TypeScript cross-platform nature and Dockerfile)
 - **Architecture**: x86_64, ARM64 (common for Node.js/Docker environments)
 
 ### Runtime Environment
+
 - **Primary Language**: TypeScript
 - **Package Manager**: npm
 - **Virtual Environment**: Node.js `node_modules` (local to project via `npm install`)
@@ -34,6 +36,7 @@ This document contains project-specific information that is critical for all AI 
 ## 📦 Dependencies & Versions
 
 ### Core Dependencies
+
 - **@google/genai**: 1.9.0 - Gemini API client library
 - **@modelcontextprotocol/sdk**: 1.11.0 - Model Context Protocol SDK
 - **@opentelemetry/api**: 1.9.0 - OpenTelemetry API for tracing and metrics
@@ -57,6 +60,7 @@ This document contains project-specific information that is critical for all AI 
 - **strip-ansi**: ^7.1.0 - Strips ANSI escape codes from strings
 
 ### Development Dependencies
+
 - **typescript**: ^5.3.3 - TypeScript compiler
 - **vitest**: ^3.1.1 - Unit and integration testing framework
 - **@vitest/coverage-v8**: ^3.1.1 - Code coverage for Vitest
@@ -65,9 +69,10 @@ This document contains project-specific information that is critical for all AI 
 - **esbuild**: ^0.25.0 - Fast JavaScript bundler
 - **cross-env**: ^7.0.3 - Sets environment variables across platforms
 - **concurrently**: ^9.2.0 - Runs multiple commands concurrently
-- **@types/* (various)**: Type definitions for various libraries
+- **@types/\* (various)**: Type definitions for various libraries
 
 ### System Dependencies
+
 - **Node.js**: >=20.0.0 (from `package.json` engines)
 - **npm**: (implied by `package.json` and `npm` commands)
 - **Docker**: 24.0+ (for sandbox environment, implied by `Dockerfile` and `GEMINI_SANDBOX` usage)
@@ -119,6 +124,7 @@ This project uses a monorepo structure managed by npm workspaces.
 ```
 
 **Directory Status (relative to project root):**
+
 - [ ] `controllers/` - Missing (Functionality distributed within `packages/cli/src/services/` and `packages/core/src/core/`)
 - [ ] `services/` - Present (e.g., `packages/cli/src/services/`, `packages/core/src/services/`)
 - [ ] `utils/` - Present (e.g., `packages/cli/src/utils/`, `packages/core/src/utils/`)
@@ -131,12 +137,14 @@ This project uses a monorepo structure managed by npm workspaces.
 ## 🔧 Build & Compilation Instructions
 
 ### Environment Setup
+
 ```bash
 # Install root and workspace dependencies
 npm install
 ```
 
 ### Build Commands
+
 ```bash
 # Main project build (bundles CLI executable)
 npm run build all
@@ -149,12 +157,14 @@ npm run clean
 ```
 
 ### Build Failure Diagnosis
+
 ```bash
 # Generate diff to last commit for error diagnosis
 git diff HEAD
 ```
 
 ### Configuration Files
+
 - **Build Config**: `Makefile`, `package.json` (scripts), `esbuild.config.js`
 - **Environment Config**: `.env` (implied by `dotenv` dependency), `packages/cli/src/config/config.ts`, `packages/core/src/config/config.ts`
 
@@ -163,6 +173,7 @@ git diff HEAD
 ## 🧪 Testing Instructions
 
 ### Unit Tests
+
 ```bash
 # Command to run all unit tests across workspaces
 npm test
@@ -172,6 +183,7 @@ npm run test:ci
 ```
 
 ### Integration Tests
+
 ```bash
 # Command to run all integration tests (various sandbox modes)
 npm run test:integration:all
@@ -184,6 +196,7 @@ npm run test:integration:sandbox:docker
 ```
 
 ### Test Configuration
+
 - **Test Framework**: `vitest`
 - **Coverage Tool**: `@vitest/coverage-v8`
 - **Test Database**: Not applicable (no explicit database tests identified)
@@ -193,6 +206,7 @@ npm run test:integration:sandbox:docker
 ## 🎯 Development Lifecycle Standards
 
 ### Code Quality Tools
+
 - **Formatter**: `prettier`
   - Command: `npm run format`
 - **Linter**: `eslint`
@@ -201,6 +215,7 @@ npm run test:integration:sandbox:docker
   - Command: `npm run typecheck`
 
 ### Pre-commit Hooks
+
 - **Enabled**: No explicit pre-commit hooks configured.
 - **Configuration**: N/A
 - **Hooks**: The `preflight` script (`npm run preflight`) is a comprehensive check run before CI, which includes `format`, `lint:ci`, `build`, `typecheck`, and `test:ci`. This serves as a strong quality gate.
@@ -209,16 +224,17 @@ npm run test:integration:sandbox:docker
 
 ## 📋 Naming Conventions (Enforced)
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Functions | `camelCase` | `sendMessageStream()` |
-| Variables | `camelCase` | `promptId` |
-| Files | `camelCase.ts`, `kebab-case.ts` | `client.ts`, `nonInteractiveCli.ts` |
-| Classes | `PascalCase` | `GeminiClient`, `CoreToolScheduler` |
-| Constants | `UPPER_SNAKE_CASE` | `MAX_CONCURRENT_CALLS` |
-| Directories | `camelCase`, `kebab-case` | `core`, `telemetry`, `code_assist` |
+| Element     | Convention                      | Example                             |
+| ----------- | ------------------------------- | ----------------------------------- |
+| Functions   | `camelCase`                     | `sendMessageStream()`               |
+| Variables   | `camelCase`                     | `promptId`                          |
+| Files       | `camelCase.ts`, `kebab-case.ts` | `client.ts`, `nonInteractiveCli.ts` |
+| Classes     | `PascalCase`                    | `GeminiClient`, `CoreToolScheduler` |
+| Constants   | `UPPER_SNAKE_CASE`              | `MAX_CONCURRENT_CALLS`              |
+| Directories | `camelCase`, `kebab-case`       | `core`, `telemetry`, `code_assist`  |
 
 ### Language-Specific Conventions
+
 - **TypeScript**: Use type annotations for all function parameters and returns. Prefer `async/await` for asynchronous operations.
 
 ---
@@ -226,6 +242,7 @@ npm run test:integration:sandbox:docker
 ## 🔒 Security & Environment
 
 ### Environment Variables
+
 - **Required Variables**:
   - `GEMINI_SANDBOX` - Controls sandbox environment for integration tests (`false`, `docker`, `podman`)
   - `GEMINI_CONCURRENCY_ENABLED` - Enables/disables concurrent processing
@@ -234,6 +251,7 @@ npm run test:integration:sandbox:docker
   - `DEBUG` - Enables debug logging (from `package.json` debug script)
 
 ### Security Tools
+
 - **Dependency Scanner**: `npm audit` (implied by `npm` usage)
 - **Static Analysis**: Not explicitly configured in `package.json` scripts.
 
@@ -242,12 +260,14 @@ npm run test:integration:sandbox:docker
 ## 📝 Documentation Standards
 
 ### Required Documentation
+
 - **README.md**: Project overview, setup, usage
 - **API Documentation**: Not explicitly generated, but JSDoc/TSDoc comments are likely used in source.
 - **Architecture Documentation**: `docs/architecture.md`, `.chorus/implementation_guide.md`
 - **Changelog**: Not explicitly maintained as a separate file; `git` history and commit messages serve this purpose.
 
 ### Documentation Generation
+
 ```bash
 # No explicit documentation generation commands found beyond general build.
 ```
@@ -257,11 +277,13 @@ npm run test:integration:sandbox:docker
 ## 🚀 Deployment Information
 
 ### Build Artifacts
+
 - **Output Directory**: `bundle/` (for main CLI executable), `dist/` (for individual packages)
 - **Main Executable**: `bundle/gemini.js`
 - **Dependencies**: Bundled within `bundle/` or managed by `node_modules` in `dist/` packages.
 
 ### Container Configuration
+
 - **Docker**: Yes
 - **Dockerfile Location**: `./Dockerfile`
 - **Base Image**: Not explicitly stated in `Dockerfile` content, but typically Node.js base images.
@@ -271,11 +293,13 @@ npm run test:integration:sandbox:docker
 ## 📊 Performance & Monitoring
 
 ### Performance Requirements
+
 - **Memory Limit**: Not explicitly defined.
 - **CPU Usage**: Not explicitly defined.
 - **Response Time**: Not explicitly defined, but "faster response times" is a core goal of Project Chorus.
 
 ### Monitoring & Logging
+
 - **Log Level**: Not explicitly defined in config, but debug logging is available.
 - **Log Format**: Not explicitly defined.
 - **Metrics**: OpenTelemetry (used for `telemetry` events, e.g., `tool_call`, `concurrent_syntax_detected`).
@@ -285,11 +309,13 @@ npm run test:integration:sandbox:docker
 ## 🔄 Version Control & CI/CD
 
 ### Git Workflow
+
 - **Branching Strategy**: Not explicitly defined, but standard Git practices are assumed.
 - **Commit Convention**: Conventional Commits (e.g., `feat:`, `fix:`) as per `implementation_guide.md` example.
 - **Required Checks**: `npm run preflight` (lint, typecheck, test:ci, build) must pass before commits.
 
 ### CI/CD Pipeline
+
 - **Platform**: Not explicitly stated, but `test:ci` and `lint:ci` scripts suggest a CI environment.
 - **Pipeline File**: Not explicitly stated.
 - **Deployment Stages**: Not explicitly stated.
@@ -299,6 +325,7 @@ npm run test:integration:sandbox:docker
 ## 🚨 Critical Notes for AI Modes
 
 ### Mandatory Rules
+
 1. **Never modify this file** without explicit user approval.
 2. **Always follow the naming conventions** specified above.
 3. **Use the exact build/test commands** provided in this document and `build_protocol.md`.
@@ -307,6 +334,7 @@ npm run test:integration:sandbox:docker
 6. **Adhere to incremental development and rigorous testing** as outlined in `.chorus/implementation_guide.md`.
 
 ### Common Pitfalls to Avoid
+
 - Installing dependencies globally instead of using `npm install` locally.
 - Using incorrect file or variable naming conventions.
 - Ignoring build or test failures.
@@ -318,11 +346,13 @@ npm run test:integration:sandbox:docker
 ## 📞 Support & Resources
 
 ### Documentation Links
+
 - **Project Repository**: `https://github.com/google-gemini/gemini-cli.git`
 - **Issue Tracker**: `.chorus/issue_tracker.md`
 - **Wiki/Confluence**: `docs/` folder serves as primary internal documentation.
 
 ### Key Personnel
+
 - **Project Owner**: TBD
 - **Lead Developer**: TBD
 - **DevOps Contact**: TBD

@@ -98,6 +98,7 @@
 ### Iteration 1: Core Concurrency MVP
 
 ### Task 1.1: Implement `parseConcurrentSyntax` function.
+
 - **Associated User Story(s)**: US-001
 - **Description**: Develop regex/string parsing to detect `callN:` patterns in `PartListUnion` request. Handle text extraction from various `Part` types.
 - **Estimated Effort**: Small
@@ -109,6 +110,7 @@
 - **Assigned To**: Coder
 
 ### Task 1.2: Integrate `parseConcurrentSyntax` into `sendMessageStream`.
+
 - **Associated User Story(s)**: US-001
 - **Description**: Modify `GeminiClient.sendMessageStream()` to call `parseConcurrentSyntax` and route to concurrent processing if `hasConcurrentCalls` is true, else continue sequential flow.
 - **Estimated Effort**: Small
@@ -119,6 +121,7 @@
 - **Assigned To**: Coder
 
 ### Task 1.3: Implement `StreamAggregator` class.
+
 - **Associated User Story(s)**: US-004
 - **Description**: Create `StreamAggregator` class to merge `AsyncGenerator<ServerGeminiStreamEvent>` streams, including basic error handling per stream.
 - **Estimated Effort**: Medium
@@ -130,6 +133,7 @@
 - **Assigned To**: Coder
 
 ### Task 1.4: Implement `executeConcurrentStreams` function.
+
 - **Associated User Story(s)**: US-004
 - **Description**: Build multiple `PartListUnion` requests from parsed concurrent calls, create multiple `Turn` instances, and use `StreamAggregator` to merge event streams. Add call ID attribution to streaming events.
 - **Estimated Effort**: Medium
@@ -141,6 +145,7 @@
 - **Assigned To**: Coder
 
 ### Task 1.5: Integrate basic concurrency config.
+
 - **Associated User Story(s)**: US-007
 - **Description**: Add `concurrency` properties (`enabled`, `maxConcurrentCalls`, `forceProcessing`) to `ConfigParameters` interface and `Config` class. Implement getter methods.
 - **Estimated Effort**: Small
@@ -152,6 +157,7 @@
 - **Assigned To**: Coder
 
 ### Task 1.6: Ensure build protocol adherence.
+
 - **Associated User Story(s)**: US-008, US-009, US-010, US-011, US-012
 - **Description**: Verify that development adheres to the defined build protocol (`npm install`, `npm run preflight`, `npm run build all`), incremental development, rigorous per-increment testing, and issue tracking. This is an ongoing process task.
 - **Estimated Effort**: Ongoing
@@ -166,6 +172,7 @@
 ### Iteration 2: Enhanced Control & Developer Experience
 
 ### Task 2.1: Implement `checkForcedBehavior` function.
+
 - **Associated User Story(s)**: US-003
 - **Description**: Develop function to detect force flags (`--force-sequential`, `--force-concurrent`), prompt prefixes (`[SEQUENTIAL]`, `[CONCURRENT]`), and environment variables (`GEMINI_FORCE_PROCESSING`). Implement priority order.
 - **Estimated Effort**: Medium
@@ -176,6 +183,7 @@
 - **Assigned To**: Coder
 
 ### Task 2.2: Integrate forced behavior into `sendMessageStream`.
+
 - **Associated User Story(s)**: US-003
 - **Description**: Modify `sendMessageStream` to use `checkForcedBehavior` and route processing accordingly (sequential, concurrent via manual parsing/simple splitting).
 - **Estimated Effort**: Small
@@ -186,6 +194,7 @@
 - **Assigned To**: Coder
 
 ### Task 2.3: Integrate context building into concurrent calls.
+
 - **Associated User Story(s)**: US-005
 - **Description**: Ensure current context (files, GEMINI.md memory, tool schemas) is passed to each parallel streaming call. Reuse existing `GeminiClient.getEnvironment()` mechanisms.
 - **Estimated Effort**: Medium
@@ -196,6 +205,7 @@
 - **Assigned To**: Coder
 
 ### Task 2.4: Enable tool execution within concurrent streams.
+
 - **Associated User Story(s)**: US-006
 - **Description**: Integrate existing tool execution flow into concurrent streaming calls. Handle sequential tool confirmations and security validation within parallel scenarios. Aggregate tool results.
 - **Estimated Effort**: Large
@@ -210,6 +220,7 @@
 ### Iteration 3: Intelligent Automation & Optimizations
 
 ### Task 3.1: Implement LLM-assisted prompt analysis.
+
 - **Associated User Story(s)**: US-002
 - **Description**: Add `analyzePromptForConcurrency()` to send user prompt to LLM for analysis (structured JSON response). Implement `parseStructuredResponse()` for JSON parsing.
 - **Estimated Effort**: Medium
@@ -221,6 +232,7 @@
 - **Assigned To**: Coder
 
 ### Task 3.2: Integrate LLM analysis into `sendMessageStream`.
+
 - **Associated User Story(s)**: US-002
 - **Description**: Modify `sendMessageStream` to use LLM analysis when no forced behavior is detected. Route to sequential or concurrent processing based on LLM response. Implement `streamDirectResponse()` for sequential LLM answers.
 - **Estimated Effort**: Medium
@@ -232,6 +244,7 @@
 - **Assigned To**: Coder
 
 ### Task 3.3: Implement advanced stream aggregation.
+
 - **Associated User Story(s)**: US-004 (Advanced Aggregation)
 - **Description**: Enhance `StreamAggregator` with smarter result combination strategies (e.g., conflict detection, quality scoring, cross-call relationship detection).
 - **Estimated Effort**: Large
@@ -243,6 +256,7 @@
 - **Assigned To**: Coder
 
 ### Task 3.4: Implement performance optimizations.
+
 - **Associated User Story(s)**: US-008
 - **Description**: Implement rate limiting, quota management, connection pooling, advanced error recovery, and streaming performance optimizations.
 - **Estimated Effort**: Large
@@ -259,6 +273,7 @@
 ## 3. Dependencies & Critical Path
 
 ### Iteration 1
+
 - **Internal Dependencies**:
   - Task 1.2 depends on Task 1.1
   - Task 1.4 depends on Task 1.1, Task 1.3
@@ -266,6 +281,7 @@
 - **Critical Path**: `Task 1.1 → Task 1.2 → Task 1.4` (Core concurrent execution flow)
 
 ### Iteration 2
+
 - **Internal Dependencies**:
   - Task 2.2 depends on Task 2.1
   - Task 2.3 depends on Task 1.4
@@ -274,6 +290,7 @@
 - **Critical Path**: `Task 2.1 → Task 2.2` (Forced behavior control) and `Task 2.3 → Task 2.4` (Context and Tooling)
 
 ### Iteration 3
+
 - **Internal Dependencies**:
   - Task 3.2 depends on Task 3.1, Task 1.4
   - Task 3.3 depends on Task 1.3
@@ -286,12 +303,14 @@
 ## 4. Risks and Uncertainties _(Requiring Downstream Action)_
 
 ### Iteration 2
+
 - **Uncertainty**: Tool Usage within Concurrent Streams (US-006) - Potential complexity in managing sequential tool confirmations within parallel streams.
   - **Impact**: Risk of deadlocks, unexpected behavior, or poor user experience.
   - **Action Needed**: Researcher/Detailler Mode to investigate and define robust interaction patterns for tool execution and confirmation in a concurrent environment.
   - **Status**: Pending Researcher/Detailler input
 
 ### Iteration 3
+
 - **Uncertainty**: LLM Accuracy for Intelligent Prompt Processing (US-002) - Accuracy of LLM in identifying concurrency opportunities and generating optimal sub-prompts.
   - **Impact**: Suboptimal processing, reduced performance benefits, or incorrect responses.
   - **Action Needed**: Researcher Mode to investigate LLM prompt engineering strategies, fine-tuning options, and define robust fallback mechanisms.

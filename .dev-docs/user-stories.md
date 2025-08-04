@@ -19,6 +19,7 @@
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Successful Concurrent Execution
+
 - **Given** the user provides a valid command with `callN: prompt` syntax (e.g., `gemini -p "call1: prompt1, call2: prompt2"`)
 - **When** the command is executed
 - **Then** the system parses the input into distinct concurrent calls
@@ -26,6 +27,7 @@ This section defines the measurable conditions that must be met for this user st
 - **And** a single, aggregated stream of responses is returned to the user
 
 ### Scenario: Malformed Syntax Handling
+
 - **Given** the user provides malformed `callN: prompt` syntax
 - **When** the command is executed
 - **Then** the system gracefully falls back to sequential processing or provides a clear error/warning
@@ -74,6 +76,7 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Automatic Concurrent Processing
+
 - **Given** the user provides a complex prompt suitable for multi-perspective analysis (e.g., "Analyze this code for security and performance")
 - **When** the command is executed without explicit force flags or syntax
 - **Then** the system uses LLM analysis to identify concurrent opportunities
@@ -81,12 +84,14 @@ This section defines the measurable conditions that must be met for this user st
 - **And** the aggregated response reflects the parallel analyses
 
 ### Scenario: Automatic Sequential Processing
+
 - **Given** the user provides a straightforward prompt best suited for a single, direct answer (e.g., "What is TypeScript?")
 - **When** the command is executed without explicit force flags or syntax
 - **Then** the system uses LLM analysis to determine sequential processing is optimal
 - **And** a single, direct response is provided without concurrent calls
 
 ### Scenario: LLM Analysis Failure Fallback
+
 - **Given** the LLM analysis fails or returns a malformed response
 - **When** the command is executed
 - **Then** the system gracefully falls back to manual syntax parsing (if applicable) or standard sequential processing
@@ -135,18 +140,21 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Force Sequential via CLI Flag
+
 - **Given** the user executes a command with `--force-sequential` flag
 - **When** the command is executed
 - **Then** the system processes the prompt sequentially, regardless of its content or LLM analysis
 - **And** the response is a single, coherent output
 
 ### Scenario: Force Concurrent via Prompt Prefix
+
 - **Given** the user executes a command with `[CONCURRENT]` prefix in the prompt
 - **When** the command is executed
 - **Then** the system processes the prompt concurrently, attempting to split it into parallel calls
 - **And** the response is an aggregated stream from multiple calls
 
 ### Scenario: Force Processing via Environment Variable
+
 - **Given** `GEMINI_FORCE_PROCESSING` environment variable is set to `sequential` or `concurrent`
 - **When** the command is executed without CLI flags or prompt prefixes
 - **Then** the system adheres to the processing mode specified by the environment variable
@@ -195,6 +203,7 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Streaming Aggregation
+
 - **Given** multiple concurrent API calls are executing
 - **When** events (content, tool calls, etc.) are received from individual streams
 - **Then** the `StreamAggregator` merges these events into a single output stream
@@ -202,12 +211,14 @@ This section defines the measurable conditions that must be met for this user st
 - **And** the output is presented in a readable, organized format (e.g., with section headers)
 
 ### Scenario: Real-time Delivery
+
 - **Given** a concurrent command is running
 - **When** partial results or events become available from any parallel call
 - **Then** these events are yielded to the user immediately, without buffering until all calls complete
 - **And** the user perceives a continuous flow of information
 
 ### Scenario: Error Handling in Streams
+
 - **Given** one or more concurrent streams encounter an error (e.g., API failure, timeout)
 - **When** the error occurs
 - **Then** the `StreamAggregator` handles the error gracefully for that specific stream
@@ -257,18 +268,21 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: File Context Inclusion
+
 - **Given** the user has provided file context (e.g., `gemini @src/utils.js`)
 - **When** a subsequent concurrent command is executed (e.g., `call1: analyze, call2: optimize`)
 - **Then** both `call1` and `call2` receive the content of `src/utils.js` as part of their prompt context
 - **And** the analyses from both calls are informed by the file content
 
 ### Scenario: Memory Context Inclusion
+
 - **Given** the user has established `GEMINI.md` memory
 - **When** a concurrent command is executed
 - **Then** all concurrent calls include the relevant `GEMINI.md` memory content in their context
 - **And** the responses reflect awareness of the session memory
 
 ### Scenario: Tool Schema Inclusion
+
 - **Given** available tool schemas (e.g., `read_file`, `web_fetch`)
 - **When** a concurrent command is executed
 - **Then** all concurrent calls are aware of and can potentially utilize the available tools
@@ -317,6 +331,7 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Successful Tool Execution
+
 - **Given** a concurrent call requires a tool (e.g., `call1: read_file('config.json')`)
 - **When** the concurrent call is processed
 - **Then** the tool execution is triggered within that specific call's stream
@@ -324,6 +339,7 @@ This section defines the measurable conditions that must be met for this user st
 - **And** the overall aggregated output includes the tool's contribution
 
 ### Scenario: Sequential Tool Confirmation
+
 - **Given** a tool call requires user confirmation (e.g., `write_file`)
 - **When** the tool call is triggered within a concurrent stream
 - **Then** the confirmation prompt is presented to the user sequentially
@@ -331,6 +347,7 @@ This section defines the measurable conditions that must be met for this user st
 - **And** other concurrent streams continue processing if not dependent on the tool
 
 ### Scenario: Multiple Tool Calls
+
 - **Given** multiple concurrent calls each trigger different tool executions
 - **When** the calls are processed
 - **Then** each tool execution is handled independently within its respective stream
@@ -380,18 +397,21 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: `settings.json` Configuration
+
 - **Given** `concurrency` settings are defined in `settings.json` (e.g., `"enabled": false`, `"maxConcurrentCalls": 5`)
 - **When** the CLI is initialized
 - **Then** the `Config` class correctly loads and applies these settings
 - **And** the CLI's behavior reflects the configured concurrency parameters
 
 ### Scenario: Environment Variable Override
+
 - **Given** `GEMINI_CONCURRENCY_ENABLED` or `GEMINI_MAX_CONCURRENT_CALLS` environment variables are set
 - **When** the CLI is initialized
 - **Then** environment variables correctly override settings from `settings.json`
 - **And** the CLI's behavior reflects the environment variable settings
 
 ### Scenario: `Config` Class Access
+
 - **Given** the `Config` class is instantiated
 - **When** `getConcurrencyEnabled()`, `getMaxConcurrentCalls()`, or `getForcedProcessingMode()` methods are called
 - **Then** they return the currently active concurrency settings, respecting the priority order (CLI flags > prompt prefixes > env vars > `settings.json` > defaults)
@@ -439,18 +459,21 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Environment Setup
+
 - **Given** a fresh clone of the repository
 - **When** `npm install` is executed in the project root
 - **Then** all project dependencies are successfully installed
 - **And** the environment is ready for development
 
 ### Scenario: Preflight Checks
+
 - **Given** the environment is set up
 - **When** `npm run preflight` is executed
 - **Then** linters, type checkers, and tests are run successfully
 - **And** any issues are reported clearly
 
 ### Scenario: Project Build
+
 - **Given** preflight checks pass
 - **When** `npm run build all` is executed
 - **Then** the entire project builds successfully without errors
@@ -499,12 +522,14 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Diff Generation on Build Failure
+
 - **Given** a build fails after code changes
 - **When** the developer executes `git diff HEAD`
 - **Then** a diff is generated showing only the changes since the last commit
 - **And** this diff is the primary source for error investigation
 
 ### Scenario: Error Source Isolation
+
 - **Given** a build failure and the generated diff
 - **When** the developer analyzes the diff
 - **Then** the developer can confidently attribute the error to changes within the diff
@@ -553,18 +578,21 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Increment Definition
+
 - **Given** a new feature to implement
 - **When** the development process begins
 - **Then** the feature is broken down into clearly defined, small increments
 - **And** each increment represents a minimal, shippable piece of functionality
 
 ### Scenario: Increment Completion
+
 - **Given** an increment's code changes are implemented
 - **When** the increment is considered "complete"
 - **Then** it has passed all defined tests (unit, integration, CLI executor)
 - **And** it does not introduce regressions or new technical debt
 
 ### Scenario: Progressive Confidence
+
 - **Given** a series of completed increments
 - **When** the overall feature is reviewed
 - **Then** each increment contributes to a working prototype
@@ -613,6 +641,7 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Comprehensive Test Execution
+
 - **Given** an increment's code is implemented
 - **When** the testing protocol is followed for that increment
 - **Then** the project successfully builds (`npm run build`)
@@ -623,6 +652,7 @@ This section defines the measurable conditions that must be met for this user st
 - **And** error scenarios are tested for graceful degradation
 
 ### Scenario: Quality Gate Enforcement
+
 - **Given** an increment has been tested
 - **When** the developer attempts to proceed to the next increment or commit
 - **Then** all tests must pass before proceeding
@@ -672,18 +702,21 @@ This section is for the Storyteller AI's internal assessment to ensure the story
 This section defines the measurable conditions that must be met for this user story to be considered complete and successful from the user's perspective. Each criterion should be testable.
 
 ### Scenario: Issue Documentation
+
 - **Given** a new issue is identified
 - **When** the issue is documented in `issue_tracker.md`
 - **Then** it includes details such as Increment, Issue Description, Status, Assigned To, Issue Type, Severity, Error Message, Files Affected, and Solution Applied
 - **And** it includes Time to Resolution, Prevention Notes, and Related Issues
 
 ### Scenario: Status Updates
+
 - **Given** an issue is being worked on or resolved
 - **When** its status changes
 - **Then** the `Status` field in `issue_tracker.md` is updated (e.g., from `Failed QA` to `Complete`)
 - **And** the `Solution Applied` section is populated upon resolution
 
 ### Scenario: Learning and Prevention
+
 - **Given** an issue has been resolved and documented
 - **When** developers review the `issue_tracker.md`
 - **Then** they can identify common issue types and root causes

@@ -17,27 +17,31 @@
 
 ## 1. Issue Description & Reproduction Steps
 
-*This section details the problem as initially reported and the precise steps to reliably reproduce it.*
+_This section details the problem as initially reported and the precise steps to reliably reproduce it._
 
 ### Original Issue
+
 [Concise summary of the bug/unexpected behavior.]
 
 ### Steps to Reproduce
+
 1.  [Step 1]
 2.  [Step 2]
 3.  [Step 3]
 
 ### Expected Outcome
+
 [What should have happened.]
 
 ### Actual Outcome
+
 [What actually happened, including error messages, console output, etc.]
 
 ---
 
 ## 2. Diagnostic Process & Findings
 
-*This section documents the methodical approach taken to isolate the root cause, including attempts made and their results.*
+_This section documents the methodical approach taken to isolate the root cause, including attempts made and their results._
 
 ### Diagnostic Attempts & Results
 
@@ -50,13 +54,13 @@
 - **Attempt 3**: [Brief description of what was tried, e.g., "Stepped through _convert_image_pillow() in debugger with problematic input."]
   - **Result**: [Outcome, e.g., "Identified that Pillow's save() method was called with an incorrect quality parameter for WebP, leading to corruption."]
 
-*... (Add more attempts and results as necessary to show the investigative path.)*
+_... (Add more attempts and results as necessary to show the investigative path.)_
 
 ---
 
 ## 3. Root Cause Analysis
 
-*This section provides a clear, unequivocal statement of the underlying cause of the bug.*
+_This section provides a clear, unequivocal statement of the underlying cause of the bug._
 
 - **Identified Root Cause**: [e.g., "The _convert_image_pillow function was passing a quality parameter (intended for JPG) directly to Pillow's save() method for WebP, which expects a method parameter instead, leading to an invalid argument and file corruption."]
 - **Scope of Impact**: [e.g., "Affects all WebP conversions. Does not impact JPG or PNG conversions. May lead to corrupted output files for users attempting WebP conversion."]
@@ -65,7 +69,7 @@
 
 ## 4. Proposed Fix
 
-*This section outlines the minimal, clean solution to address the identified root cause.*
+_This section outlines the minimal, clean solution to address the identified root cause._
 
 ### Proposed Solution
 
@@ -90,7 +94,7 @@ else:
 
 ## 5. Verification Plan
 
-*This section details how the fix will be verified post-implementation.*
+_This section details how the fix will be verified post-implementation._
 
 - [ ] Re-run original steps to reproduce (see section 1).
 - [ ] Verify that the `.webp` output file is valid and opens correctly.

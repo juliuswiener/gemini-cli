@@ -208,14 +208,14 @@ export class StreamMultiplexer {
       originalPrompt: string;
       executionId: string;
     }>,
-    signal: AbortSignal
+    signal: AbortSignal,
   ): AsyncGenerator<EnrichedStreamEvent> {
     // Enhanced implementation with metadata enrichment
   }
-  
+
   static async *interleavedMerge<T>(
     generators: AsyncGenerator<T>[],
-    signal: AbortSignal
+    signal: AbortSignal,
   ): AsyncGenerator<T> {
     // Non-blocking interleaved merging for optimal performance
   }
@@ -229,9 +229,9 @@ export class StreamMultiplexer {
 export class FileLockManager {
   private locks: Map<string, FileLock>;
   private queue: Map<string, LockRequest[]>;
-  
+
   constructor(private telemetryLogger: TelemetryLogger) {}
-  
+
   async acquireLock(request: LockRequest): Promise<FileLock>;
   async releaseLock(lockId: string): Promise<void>;
   isLocked(path: string): boolean;
@@ -246,17 +246,17 @@ export class FileLockManager {
 // In packages/core/src/core/retryManager.ts
 export class RetryManager {
   private retryContexts: Map<string, RetryContext>;
-  
+
   constructor(
     private defaultConfig: RetryConfig,
-    private telemetryLogger: TelemetryLogger
+    private telemetryLogger: TelemetryLogger,
   ) {}
-  
+
   shouldRetry(callId: string, error: Error): boolean;
   async executeWithRetry<T>(
     callId: string,
     operation: () => Promise<T>,
-    config?: RetryConfig
+    config?: RetryConfig,
   ): Promise<T>;
   getRetryContext(callId: string): RetryContext | undefined;
   private calculateBackoff(attempt: number, config: RetryConfig): number;
@@ -337,6 +337,7 @@ export class RetryManager {
 **Key Test Cases:**
 
 **Parallel Execution & Stream Management:**
+
 - **Successful Parallel Execution**: Multiple prompts execute concurrently with proper metadata enrichment
 - **Mixed Success/Failure with Retries**: Some calls succeed, others fail and retry according to configuration
 - **Interleaved Stream Events**: Verify proper event ordering and metadata traceability across concurrent streams
@@ -344,6 +345,7 @@ export class RetryManager {
 - **Stream Cancellation**: Verify proper cleanup when AbortSignal is triggered during parallel execution
 
 **File Locking:**
+
 - **Concurrent File Access**: Multiple calls attempting to modify the same file are properly serialized
 - **Lock Acquisition/Release**: Verify proper lock lifecycle management and cleanup
 - **Lock Timeout Handling**: Test behavior when lock acquisition times out
@@ -351,6 +353,7 @@ export class RetryManager {
 - **Lock Conflict Resolution**: Test scenarios with overlapping file access patterns
 
 **Retry Mechanism:**
+
 - **Configurable Retry Logic**: Test different retry configurations (max retries, backoff strategies)
 - **Retryable vs Non-retryable Errors**: Verify proper error classification and retry decisions
 - **Exponential Backoff**: Test backoff timing calculations and implementation
@@ -358,6 +361,7 @@ export class RetryManager {
 - **Retry Telemetry**: Ensure proper logging of retry attempts and outcomes
 
 **Integration Testing:**
+
 - **Tool Call Coordination**: Concurrent prompts requesting overlapping tools with file locking
 - **Configuration Limits**: `maxConcurrentCalls` with retry and file locking interactions
 - **Error Aggregation**: Complex scenarios with multiple failure types and retry outcomes
@@ -375,23 +379,27 @@ export class RetryManager {
 **Edge Cases:**
 
 **Stream Management:**
+
 - **Single Concurrent Call**: Ensure metadata enrichment works correctly for single calls
 - **Empty Calls Array**: Handle graceful degradation to sequential processing
 - **Stream Error Recovery**: Handle errors in stream multiplexing without corrupting other streams
 
 **File Locking:**
+
 - **Rapid Lock/Unlock Cycles**: Test performance under high-frequency lock operations
 - **Lock File Cleanup**: Verify proper cleanup of lock files on process termination
 - **Concurrent Lock Requests**: Test fairness and ordering of multiple pending requests
 - **Lock Timeout Edge Cases**: Test behavior at exact timeout boundaries
 
 **Retry Logic:**
+
 - **Maximum Retry Exhaustion**: Verify proper failure reporting when all retries are exhausted
 - **Immediate Success After Failure**: Test retry cancellation when operation succeeds
 - **Network Intermittency**: Simulate various network failure patterns and recovery
 - **Resource Exhaustion**: Test retry behavior under resource-constrained conditions
 
 **Complex Scenarios:**
+
 - **Mixed Tool and Non-tool Calls**: Parallel execution with some calls requiring locks, others not
 - **Cascading Failures**: Test behavior when multiple concurrent calls fail simultaneously
 - **Long-running Operations**: Handle scenarios where some calls significantly outlast others
@@ -412,17 +420,20 @@ export class RetryManager {
 **Retry-Enabled Error Scenarios:**
 
 **API-Related Errors (Retryable):**
+
 - **Rate Limiting (429)**: Exponential backoff retry with longer delays
 - **Network Timeouts**: Quick retry with standard backoff
 - **Server Errors (5xx)**: Configurable retry with exponential backoff
 - **Authentication Refresh**: Single retry after token refresh
 
 **Tool Execution Errors (Context-Dependent):**
+
 - **File Lock Timeout**: Retry with extended timeout or queue position advancement
 - **Temporary File System Issues**: Retry with backoff for recoverable I/O errors
 - **Network-based Tool Failures**: Retry according to network error classification
 
 **Non-Retryable Errors (Immediate Failure):**
+
 - **Malformed Requests (4xx except 429)**: Log and fail immediately
 - **Configuration Errors**: Validate and fail fast
 - **Authorization Failures (permanent)**: Fail without retry
@@ -447,6 +458,7 @@ interface ParallelExecutionError {
 ```
 
 **Error Context Enrichment:**
+
 - **Call Traceability**: All errors include call ID and original prompt context
 - **Retry History**: Error objects include complete retry attempt history
 - **Execution Context**: Errors carry information about parallel execution state
@@ -571,35 +583,41 @@ interface EnhancedErrorReport {
 ## Success Criteria
 
 **Core Functionality:**
+
 - **Enhanced Parallel Execution**: Multiple prompts execute concurrently with full metadata traceability and retry support
 - **Interleaved Stream Events**: Events from concurrent calls are properly interleaved with complete metadata for call identification
 - **File Lock Coordination**: Concurrent tool calls safely coordinate file access without race conditions
 - **Configurable Retry Logic**: Failed calls retry according to configuration with proper backoff and error classification
 
 **Stream and Event Management:**
+
 - **Metadata-Enriched Events**: All [`ServerGeminiStreamEvent`](packages/core/src/core/turn.ts:149) objects include call traceability metadata
 - **Stream Compatibility**: Enhanced events maintain backward compatibility with existing UI and processing components
 - **Event Ordering Integrity**: Interleaved events maintain logical coherence and proper temporal context
 
 **Error Handling and Resilience:**
+
 - **Partial Failure Isolation**: Individual call failures don't disrupt other concurrent calls during retry cycles
 - **Retry Mechanism Effectiveness**: Failed calls retry according to error type and configuration with proper backoff
 - **File Lock Conflict Resolution**: File access conflicts are resolved through proper queueing and timeout handling
 - **Graceful Error Aggregation**: Final results properly aggregate successful calls, failed calls, and retry context
 
 **Performance and Resource Management:**
+
 - **File Locking Efficiency**: File locking doesn't significantly impact performance under normal concurrent loads
 - **Retry Overhead Management**: Retry logic doesn't cause excessive resource consumption or cascading delays
 - **Memory Usage Control**: Concurrent execution with retries maintains reasonable memory usage patterns
 - **Performance Benefits**: Demonstrable performance improvement for appropriate concurrent workloads despite overhead
 
 **Configuration and Control:**
+
 - **Enhanced Configuration Support**: All new retry and file locking settings work as expected with proper validation
 - **Backward Compatibility**: All existing functionality continues to work unchanged when new features are disabled
 - **Telemetry Completeness**: Comprehensive monitoring covers all aspects of enhanced parallel execution behavior
 - **Operational Transparency**: Clear visibility into retry attempts, file lock conflicts, and execution metadata through telemetry
 
 **Integration and Compatibility:**
+
 - **Non-Interactive CLI Support**: CLI properly handles enhanced concurrent execution with retry and file locking
 - **Tool Integration**: Existing tools work seamlessly with new file locking mechanism
 - **Configuration Flexibility**: Users can fine-tune retry and file locking behavior through configuration

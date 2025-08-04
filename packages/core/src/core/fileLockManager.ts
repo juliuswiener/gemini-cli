@@ -7,7 +7,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Config } from '../config/config.js';
-import { FileLockAcquiredEvent, FileLockReleasedEvent } from '../telemetry/types.js';
 
 export interface FileLock {
   path: string;
@@ -36,7 +35,7 @@ export class FileLockManager {
     this.locks = new Map();
     this.queue = new Map();
     this.lockDirectory = config.getFileLockingConfig().lockDirectory;
-    
+
     // Ensure lock directory exists
     if (!fs.existsSync(this.lockDirectory)) {
       fs.mkdirSync(this.lockDirectory, { recursive: true });
@@ -52,7 +51,7 @@ export class FileLockManager {
   async acquireLock(request: LockRequest): Promise<FileLock> {
     const { path: filePath, callId, timeout } = request;
     const lockFilePath = this.getLockFilePath(filePath);
-    
+
     // Check if already locked
     if (this.isLocked(filePath)) {
       // Add to queue
@@ -60,25 +59,25 @@ export class FileLockManager {
         this.queue.set(filePath, []);
       }
       this.queue.get(filePath)!.push(request);
-      
+
       // Wait for lock to be released
       return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
           // Remove from queue
           const queue = this.queue.get(filePath) || [];
-          const index = queue.findIndex(req => req.callId === callId);
+          const index = queue.findIndex((req) => req.callId === callId);
           if (index !== -1) {
             queue.splice(index, 1);
           }
           reject(new Error(`Timeout waiting for lock on ${filePath}`));
         }, timeout);
-        
+
         // Check periodically if lock is available
         const checkInterval = setInterval(() => {
           if (!this.isLocked(filePath)) {
             clearInterval(checkInterval);
             clearTimeout(timeoutId);
-            
+
             // Try to acquire lock
             this.tryAcquireLock(filePath, callId, lockFilePath)
               .then(resolve)
@@ -87,7 +86,7 @@ export class FileLockManager {
         }, 100);
       });
     }
-    
+
     // Try to acquire lock immediately
     return this.tryAcquireLock(filePath, callId, lockFilePath);
   }
@@ -101,12 +100,12 @@ export class FileLockManager {
     for (const [filePath, lock] of this.locks.entries()) {
       if (lock.lockId === lockId) {
         const lockFilePath = this.getLockFilePath(filePath);
-        
+
         // Log release event
         if (this.config.getTelemetryEnabled()) {
           // TODO: Implement proper telemetry logging
         }
-        
+
         // Remove lock file
         try {
           if (fs.existsSync(lockFilePath)) {
@@ -115,10 +114,10 @@ export class FileLockManager {
         } catch (error) {
           console.warn(`Failed to remove lock file ${lockFilePath}:`, error);
         }
-        
+
         // Remove from locks map
         this.locks.delete(filePath);
-        
+
         // Process queue
         this.processQueue(filePath);
         return;
@@ -153,14 +152,17 @@ export class FileLockManager {
     if (!queue || queue.length === 0) {
       return;
     }
-    
+
     // Process the next request in the queue
     const nextRequest = queue.shift();
     if (nextRequest) {
-      this.tryAcquireLock(nextRequest.path, nextRequest.callId, this.getLockFilePath(nextRequest.path))
-        .catch(error => {
-          console.warn(`Failed to acquire lock for queued request:`, error);
-        });
+      this.tryAcquireLock(
+        nextRequest.path,
+        nextRequest.callId,
+        this.getLockFilePath(nextRequest.path),
+      ).catch((error) => {
+        console.warn(`Failed to acquire lock for queued request:`, error);
+      });
     }
   }
 
@@ -172,11 +174,15 @@ export class FileLockManager {
    * @returns A promise that resolves to the acquired FileLock
    * @throws Error if the lock cannot be acquired
    */
-  private async tryAcquireLock(filePath: string, callId: string, lockFilePath: string): Promise<FileLock> {
+  private async tryAcquireLock(
+    filePath: string,
+    callId: string,
+    lockFilePath: string,
+  ): Promise<FileLock> {
     try {
       // Create lock file
       fs.writeFileSync(lockFilePath, callId, { flag: 'wx' });
-      
+
       // Create lock object
       const lock: FileLock = {
         path: filePath,
@@ -184,18 +190,20 @@ export class FileLockManager {
         acquiredAt: Date.now(),
         callId,
       };
-      
+
       // Add to locks map
       this.locks.set(filePath, lock);
-      
+
       // Log acquisition event
       if (this.config.getTelemetryEnabled()) {
         // TODO: Implement proper telemetry logging
       }
-      
+
       return lock;
     } catch (error: unknown) {
-      throw new Error(`Failed to acquire lock on ${filePath}: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to acquire lock on ${filePath}: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -214,7 +222,10 @@ export class FileLockManager {
    */
   private getLockFilePath(filePath: string): string {
     const fileName = path.basename(filePath);
-    const dirName = path.dirname(filePath).replace(/\//g, '_').replace(/\\/g, '_');
+    const dirName = path
+      .dirname(filePath)
+      .replace(/\//g, '_')
+      .replace(/\\/g, '_');
     return path.join(this.lockDirectory, `${dirName}_${fileName}.lock`);
   }
 }

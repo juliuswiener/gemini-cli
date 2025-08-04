@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import {
   Chat,
@@ -31,9 +31,15 @@ const mockChatCreateFn = vi.fn();
 const mockGenerateContentFn = vi.fn();
 const mockEmbedContentFn = vi.fn();
 const mockTurnRunFn = vi.fn();
-const mockStreamAggregatorMergeStreams = vi.fn().mockImplementation(async function* () {
-  // Default implementation that yields nothing
-  // Tests can override this behavior as needed
+const mockStreamAggregatorMergeStreams = vi.hoisted(() =>
+  vi.fn().mockImplementation(async function* () {
+    yield* [];
+  }),
+);
+vi.mock('./streamAggregator.js', () => {
+  const StreamAggregator = vi.fn();
+  StreamAggregator.prototype.mergeStreams = mockStreamAggregatorMergeStreams;
+  return { StreamAggregator };
 });
 
 vi.mock('@google/genai');
@@ -69,7 +75,7 @@ vi.mock('../utils/nextSpeakerChecker', () => ({
 }));
 vi.mock('../utils/generateContentResponseUtilities', () => ({
   getResponseText: (result: GenerateContentResponse) =>
-    result.candidates?.[0]?.content?.parts?.map((part) => part.text).join('') ||
+    result.candidates?.[0]?.content?.parts?.map((part) => part.text).join('') ??
     undefined,
 }));
 vi.mock('../telemetry/index.js', () => ({
@@ -81,14 +87,6 @@ vi.mock('../services/ideContext.js');
 vi.mock('../telemetry/loggers.js', () => ({
   logConcurrentSyntaxDetected: vi.fn(),
   logFlashDecidedToContinue: vi.fn(),
-}));
-
-vi.mock('./streamAggregator.js', () => ({
-  StreamAggregator: vi.fn().mockImplementation(() => {
-    return {
-      mergeStreams: mockStreamAggregatorMergeStreams,
-    };
-  }),
 }));
 
 describe('findIndexAfterFraction', () => {
@@ -451,11 +449,10 @@ describe('Gemini Client (client.ts)', () => {
 
   describe('addHistory', () => {
     it('should call chat.addHistory with the provided content', async () => {
-      const mockChat = {
+      const mockChat: Partial<GeminiChat> = {
         addHistory: vi.fn(),
       };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client['chat'] = mockChat as any;
+      client['chat'] = mockChat as unknown as GeminiChat;
 
       const newContent = {
         role: 'user',
@@ -586,14 +583,15 @@ describe('Gemini Client (client.ts)', () => {
         { role: 'model', parts: [{ text: '...history 6...' }] },
         { role: 'user', parts: [{ text: '...history 7...' }] },
         { role: 'model', parts: [{ text: '...history 8...' }] },
-        // Normally we would break here, but we have a function response.
         {
           role: 'user',
           parts: [{ functionResponse: { name: '...history 8...' } }],
         },
         { role: 'model', parts: [{ text: '...history 10...' }] },
-        // Instead we will break here.
-        { role: 'user', parts: [{ text: '...history 10...' }] },
+        {
+          role: 'user',
+          parts: [{ text: '...history 10...' }],
+        },
       ]);
 
       const originalTokenCount = 1000 * 0.7;
@@ -712,17 +710,8 @@ describe('Gemini Client (client.ts)', () => {
 
       // Assert
       expect(ideContext.getOpenFilesContext).toHaveBeenCalled();
-      const expectedContext = `
-This is the file that the user was most recently looking at:
-- Path: /path/to/active/file.ts
-This is the cursor position in the file:
-- Cursor Position: Line 5, Character 10
-This is the selected text in the active file:
-- hello
-Here are files the user has recently opened, with the most recent at the top:
-- /path/to/recent/file1.ts
-- /path/to/recent/file2.ts
-      `.trim();
+      const expectedContext =
+        `\nThis is the file that the user was most recently looking at:\n- Path: /path/to/active/file.ts\nThis is the cursor position in the file:\n- Cursor Position: Line 5, Character 10\nThis is the selected text in the active file:\n- hello\nHere are files the user has recently opened, with the most recent at the top:\n- /path/to/recent/file1.ts\n- /path/to/recent/file2.ts\n      `.trim();
       const expectedRequest = [{ text: expectedContext }, ...initialRequest];
       expect(mockTurnRunFn).toHaveBeenCalledWith(
         expectedRequest,
@@ -1013,6 +1002,22 @@ Here are files the user has recently opened, with the most recent at the top:
       })();
       mockTurnRunFn.mockReturnValue(mockStream);
 
+      // Mock StreamAggregator.mergeStreams for concurrent execution
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        yield {
+          type: 'content',
+          value: 'Concurrent response',
+          callId: 'call1',
+          callTitle: 'What is TypeScript?',
+        };
+        yield {
+          type: 'content',
+          value: 'Concurrent response',
+          callId: 'call2',
+          callTitle: 'What is JavaScript?',
+        };
+      });
+
       const mockChat: Partial<GeminiChat> = {
         addHistory: vi.fn(),
         getHistory: vi.fn().mockReturnValue([]),
@@ -1026,11 +1031,15 @@ Here are files the user has recently opened, with the most recent at the top:
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
       // Mock telemetry logging function
-      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      const mockLogConcurrentSyntaxDetected = vi.mocked(
+        logConcurrentSyntaxDetected,
+      );
       mockLogConcurrentSyntaxDetected.mockClear();
 
       // Act - Call sendMessageStream with concurrent syntax
-      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      const concurrentRequest = [
+        { text: 'call1: What is TypeScript?, call2: What is JavaScript?' },
+      ];
       const stream = client.sendMessageStream(
         concurrentRequest,
         new AbortController().signal,
@@ -1052,9 +1061,9 @@ Here are files the user has recently opened, with the most recent at the top:
           call_count: 2,
           calls: [
             { id: 'call1', prompt: 'What is TypeScript?' },
-            { id: 'call2', prompt: 'What is JavaScript?' }
-          ]
-        })
+            { id: 'call2', prompt: 'What is JavaScript?' },
+          ],
+        }),
       );
     });
 
@@ -1064,10 +1073,13 @@ Here are files the user has recently opened, with the most recent at the top:
         ...client['config'],
         getConcurrencyEnabled: vi.fn().mockReturnValue(false), // This is likely the issue
       };
-      client['config'] = mockConfigWithDisabledConcurrency as any;
+      client['config'] = mockConfigWithDisabledConcurrency as unknown as Config;
 
       const mockStream = (async function* () {
-        yield { type: 'content', value: 'Response without concurrent processing' };
+        yield {
+          type: 'content',
+          value: 'Response without concurrent processing',
+        };
       })();
       mockTurnRunFn.mockReturnValue(mockStream);
 
@@ -1084,11 +1096,15 @@ Here are files the user has recently opened, with the most recent at the top:
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
       // Mock telemetry logging function
-      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      const mockLogConcurrentSyntaxDetected = vi.mocked(
+        logConcurrentSyntaxDetected,
+      );
       mockLogConcurrentSyntaxDetected.mockClear();
 
       // Act - Call sendMessageStream with concurrent syntax
-      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
+      const concurrentRequest = [
+        { text: 'call1: What is TypeScript?, call2: What is JavaScript?' },
+      ];
       const stream = client.sendMessageStream(
         concurrentRequest,
         new AbortController().signal,
@@ -1111,6 +1127,22 @@ Here are files the user has recently opened, with the most recent at the top:
       })();
       mockTurnRunFn.mockReturnValue(mockStream);
 
+      // Mock StreamAggregator.mergeStreams for concurrent execution
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        yield {
+          type: 'content',
+          value: 'Concurrent response',
+          callId: 'call1',
+          callTitle: 'What is TypeScript?',
+        };
+        yield {
+          type: 'content',
+          value: 'Concurrent response',
+          callId: 'call2',
+          callTitle: 'What is JavaScript?',
+        };
+      });
+
       const mockChat: Partial<GeminiChat> = {
         addHistory: vi.fn(),
         getHistory: vi.fn().mockReturnValue([]),
@@ -1124,14 +1156,18 @@ Here are files the user has recently opened, with the most recent at the top:
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
       // Mock telemetry logging function
-      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      const mockLogConcurrentSyntaxDetected = vi.mocked(
+        logConcurrentSyntaxDetected,
+      );
       mockLogConcurrentSyntaxDetected.mockClear();
 
       // Act - Test with text that mimics the acceptance test scenario
-      const complexRequest = [{
-        text: 'This is the Gemini CLI. We are setting up the context for our chat.\nToday\'s date is Thursday, July 24, 2025.\nMy operating system is: linux\nI\'m currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli\n\nGot it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?'
-      }];
-      
+      const complexRequest = [
+        {
+          text: "This is the Gemini CLI. We are setting up the context for our chat.\nToday's date is Thursday, July 24, 2025.\nMy operating system is: linux\nI'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli\n\nGot it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?",
+        },
+      ];
+
       const stream = client.sendMessageStream(
         complexRequest,
         new AbortController().signal,
@@ -1153,9 +1189,9 @@ Here are files the user has recently opened, with the most recent at the top:
           call_count: 2,
           calls: [
             { id: 'call1', prompt: 'What is TypeScript?' },
-            { id: 'call2', prompt: 'What is JavaScript?' }
-          ]
-        })
+            { id: 'call2', prompt: 'What is JavaScript?' },
+          ],
+        }),
       );
     });
   });
@@ -1345,15 +1381,22 @@ Here are files the user has recently opened, with the most recent at the top:
 
     it('should debug the exact acceptance test scenario', () => {
       // Test the exact text that appears in the acceptance test telemetry
-      const exactAcceptanceTestText = 'Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?';
+      const exactAcceptanceTestText =
+        'Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?';
       const request = [{ text: exactAcceptanceTestText }];
-      
-      console.log('Testing exact acceptance test text:', JSON.stringify(exactAcceptanceTestText));
-      
-      const result = client['parseConcurrentSyntax'](request, 'debug-prompt-id');
-      
+
+      console.log(
+        'Testing exact acceptance test text:',
+        JSON.stringify(exactAcceptanceTestText),
+      );
+
+      const result = client['parseConcurrentSyntax'](
+        request,
+        'debug-prompt-id',
+      );
+
       console.log('parseConcurrentSyntax result:', result);
-      
+
       // This test should reveal why the regex is failing
       expect(result.hasConcurrentCalls).toBe(true);
       expect(result.calls).toHaveLength(2);
@@ -1369,21 +1412,48 @@ Here are files the user has recently opened, with the most recent at the top:
 
     it('should debug configuration issues in sendMessageStream flow', async () => {
       // Test the full sendMessageStream flow to debug why telemetry isn't logged in acceptance test
-      
+
       // Mock telemetry logging function
-      const mockLogConcurrentSyntaxDetected = vi.mocked(logConcurrentSyntaxDetected);
+      const mockLogConcurrentSyntaxDetected = vi.mocked(
+        logConcurrentSyntaxDetected,
+      );
       mockLogConcurrentSyntaxDetected.mockClear();
 
       // Debug configuration - check if these might be the issue
-      console.log('Config getConcurrencyEnabled:', client['config'].getConcurrencyEnabled());
-      console.log('Config getForcedProcessingMode:', client['config'].getForcedProcessingMode());
-      console.log('Config getTelemetryEnabled:', client['config'].getTelemetryEnabled());
+      console.log(
+        'Config getConcurrencyEnabled:',
+        client['config'].getConcurrencyEnabled(),
+      );
+      console.log(
+        'Config getForcedProcessingMode:',
+        client['config'].getForcedProcessingMode(),
+      );
+      console.log(
+        'Config getTelemetryEnabled:',
+        client['config'].getTelemetryEnabled(),
+      );
       console.log('Config getDebugMode:', client['config'].getDebugMode());
 
       const mockStream = (async function* () {
         yield { type: 'content', value: 'Response to concurrent calls' };
       })();
       mockTurnRunFn.mockReturnValue(mockStream);
+
+      // Mock StreamAggregator.mergeStreams for concurrent execution
+      mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
+        yield {
+          type: 'content',
+          value: 'Concurrent response',
+          callId: 'call1',
+          callTitle: 'What is TypeScript?',
+        };
+        yield {
+          type: 'content',
+          value: 'Concurrent response',
+          callId: 'call2',
+          callTitle: 'What is JavaScript?',
+        };
+      });
 
       const mockChat: Partial<GeminiChat> = {
         addHistory: vi.fn(),
@@ -1398,10 +1468,12 @@ Here are files the user has recently opened, with the most recent at the top:
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
       // Use the exact same prompt from acceptance test
-      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
-      
+      const concurrentRequest = [
+        { text: 'call1: What is TypeScript?, call2: What is JavaScript?' },
+      ];
+
       console.log('Testing sendMessageStream flow with concurrent request');
-      
+
       const stream = client.sendMessageStream(
         concurrentRequest,
         new AbortController().signal,
@@ -1414,9 +1486,15 @@ Here are files the user has recently opened, with the most recent at the top:
       }
 
       // Debug the results
-      console.log('logConcurrentSyntaxDetected call count:', mockLogConcurrentSyntaxDetected.mock.calls.length);
+      console.log(
+        'logConcurrentSyntaxDetected call count:',
+        mockLogConcurrentSyntaxDetected.mock.calls.length,
+      );
       if (mockLogConcurrentSyntaxDetected.mock.calls.length > 0) {
-        console.log('logConcurrentSyntaxDetected calls:', mockLogConcurrentSyntaxDetected.mock.calls);
+        console.log(
+          'logConcurrentSyntaxDetected calls:',
+          mockLogConcurrentSyntaxDetected.mock.calls,
+        );
       }
 
       // This should help us understand why the telemetry isn't working in the real flow
@@ -1426,12 +1504,26 @@ Here are files the user has recently opened, with the most recent at the top:
     it('should route to executeConcurrentStreams when concurrent calls are detected', async () => {
       // Arrange
       const mockConcurrentEvents = [
-        { type: 'content', value: 'TypeScript analysis', callId: 'call1', callTitle: 'What is TypeScript?' },
-        { type: 'content', value: 'JavaScript analysis', callId: 'call2', callTitle: 'What is JavaScript?' }
+        {
+          type: 'content',
+          value: 'TypeScript analysis',
+          callId: 'call1',
+          callTitle: 'What is TypeScript?',
+        },
+        {
+          type: 'content',
+          value: 'JavaScript analysis',
+          callId: 'call2',
+          callTitle: 'What is JavaScript?',
+        },
       ];
 
       // Mock executeConcurrentStreams to return test events
-      const mockExecuteConcurrentStreams = vi.spyOn(client as any, 'executeConcurrentStreams');
+      const mockExecuteConcurrentStreams = vi.spyOn(
+        client,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'executeConcurrentStreams' as any,
+      );
       mockExecuteConcurrentStreams.mockImplementation(async function* () {
         for (const event of mockConcurrentEvents) {
           yield event;
@@ -1450,8 +1542,10 @@ Here are files the user has recently opened, with the most recent at the top:
       };
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
-      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
-      
+      const concurrentRequest = [
+        { text: 'call1: What is TypeScript?, call2: What is JavaScript?' },
+      ];
+
       // Act
       const stream = client.sendMessageStream(
         concurrentRequest,
@@ -1461,7 +1555,7 @@ Here are files the user has recently opened, with the most recent at the top:
 
       const events = [];
       let finalResult: Turn | undefined;
-      
+
       // Consume the stream and capture events and final result
       while (true) {
         const result = await stream.next();
@@ -1477,15 +1571,15 @@ Here are files the user has recently opened, with the most recent at the top:
       expect(mockExecuteConcurrentStreams).toHaveBeenCalledWith(
         [
           { id: 'call1', prompt: 'What is TypeScript?' },
-          { id: 'call2', prompt: 'What is JavaScript?' }
+          { id: 'call2', prompt: 'What is JavaScript?' },
         ],
         expect.any(Object), // signal
-        'test-concurrent-routing'
+        'test-concurrent-routing',
       );
 
       // Should yield events from executeConcurrentStreams
       expect(events).toEqual(mockConcurrentEvents);
-      
+
       // Should return a Turn instance
       expect(finalResult).toBeInstanceOf(Turn);
 
@@ -1513,10 +1607,14 @@ Here are files the user has recently opened, with the most recent at the top:
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
       // Mock executeConcurrentStreams to ensure it's not called
-      const mockExecuteConcurrentStreams = vi.spyOn(client as any, 'executeConcurrentStreams');
+      const mockExecuteConcurrentStreams = vi.spyOn(
+        client,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'executeConcurrentStreams' as any,
+      );
 
       const sequentialRequest = [{ text: 'What is TypeScript?' }]; // No concurrent syntax
-      
+
       // Act
       const stream = client.sendMessageStream(
         sequentialRequest,
@@ -1526,7 +1624,7 @@ Here are files the user has recently opened, with the most recent at the top:
 
       const events = [];
       let finalResult: Turn | undefined;
-      
+
       // Consume the stream
       while (true) {
         const result = await stream.next();
@@ -1540,19 +1638,29 @@ Here are files the user has recently opened, with the most recent at the top:
       // Assert
       expect(mockExecuteConcurrentStreams).not.toHaveBeenCalled();
       expect(mockTurnRunFn).toHaveBeenCalledTimes(1);
-      expect(mockTurnRunFn).toHaveBeenCalledWith(sequentialRequest, expect.any(Object));
-      
-      expect(events).toEqual([{ type: 'content', value: 'Sequential response' }]);
+      expect(mockTurnRunFn).toHaveBeenCalledWith(
+        sequentialRequest,
+        expect.any(Object),
+      );
+
+      expect(events).toEqual([
+        { type: 'content', value: 'Sequential response' },
+      ]);
       expect(finalResult).toBeInstanceOf(Turn);
     });
 
     it('should handle errors in concurrent path gracefully', async () => {
       // Arrange
       const mockError = new Error('Concurrent execution failed');
-      
+
       // Mock executeConcurrentStreams to throw an error
-      const mockExecuteConcurrentStreams = vi.spyOn(client as any, 'executeConcurrentStreams');
+      const mockExecuteConcurrentStreams = vi.spyOn(
+        client,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'executeConcurrentStreams' as any,
+      );
       mockExecuteConcurrentStreams.mockImplementation(async function* () {
+        yield* [];
         throw mockError;
       });
 
@@ -1568,8 +1676,10 @@ Here are files the user has recently opened, with the most recent at the top:
       };
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
-      const concurrentRequest = [{ text: 'call1: What is TypeScript?, call2: What is JavaScript?' }];
-      
+      const concurrentRequest = [
+        { text: 'call1: What is TypeScript?, call2: What is JavaScript?' },
+      ];
+
       // Act & Assert
       const stream = client.sendMessageStream(
         concurrentRequest,
@@ -1589,44 +1699,26 @@ Here are files the user has recently opened, with the most recent at the top:
 
     it('should handle concurrent syntax buried in massive context like real acceptance test', () => {
       // Create a test that mimics the real acceptance test scenario with massive context
-      const massiveContext = `This is the Gemini CLI. We are setting up the context for our chat.
-  Today's date is Thursday, July 24, 2025.
-  My operating system is: linux
-  I'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli
-  Showing up to 200 items (files + folders). Folders or files indicated with ... contain more items not shown, were ignored, or the display limit (200 items) was reached.
+      const massiveContext = `This is the Gemini CLI. We are setting up the context for our chat.\n  Today's date is Thursday, July 24, 2025.\n  My operating system is: linux\n  I'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli\n  Showing up to 200 items (files + folders). Folders or files indicated with ... contain more items not shown, were ignored, or the display limit (200 items) was reached.\n\n/home/julius/01_Private/02_Projects/gemini-cli/\n├───.editorconfig\n├───.gitattributes\n├───.gitignore\n├───.npmrc\n├───.nvmrc\n├───.prettierrc.json\n├───.roomodes\n├───CONTRIBUTING.md\n├───Dockerfile\n├───esbuild.config.js\n├───eslint.config.js\n├───GEMINI.md\n├───LICENSE\n├───Makefile\n├───package-lock.json\n├───package.json\n├───README.md\n├───ROADMAP.md\n├───tsconfig.json\n${'├───file-' + Array.from({ length: 100 }, (_, i) => i).join('.txt\n├───file-')}.txt\nGot it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?`;
 
-/home/julius/01_Private/02_Projects/gemini-cli/
-├───.editorconfig
-├───.gitattributes
-├───.gitignore
-├───.npmrc
-├───.nvmrc
-├───.prettierrc.json
-├───.roomodes
-├───CONTRIBUTING.md
-├───Dockerfile
-├───esbuild.config.js
-├───eslint.config.js
-├───GEMINI.md
-├───LICENSE
-├───Makefile
-├───package-lock.json
-├───package.json
-├───README.md
-├───ROADMAP.md
-├───tsconfig.json
-${'├───file-' + Array.from({length: 100}, (_, i) => i).join('.txt\n├───file-')}.txt
-Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaScript?`;
-      
       const request = [{ text: massiveContext }];
-      
-      console.log('Testing with massive context, text length:', massiveContext.length);
-      console.log('Last 200 chars:', JSON.stringify(massiveContext.slice(-200)));
-      
-      const result = client['parseConcurrentSyntax'](request, 'debug-massive-context');
-      
+
+      console.log(
+        'Testing with massive context, text length:',
+        massiveContext.length,
+      );
+      console.log(
+        'Last 200 chars:',
+        JSON.stringify(massiveContext.slice(-200)),
+      );
+
+      const result = client['parseConcurrentSyntax'](
+        request,
+        'debug-massive-context',
+      );
+
       console.log('parseConcurrentSyntax result with massive context:', result);
-      
+
       // This test should reveal if the regex fails with massive context
       expect(result.hasConcurrentCalls).toBe(true);
       expect(result.calls).toHaveLength(2);
@@ -1642,28 +1734,28 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
 
     it('should handle concurrent syntax in multi-part request structure like real CLI', () => {
       // Test the actual multi-part request structure that happens in real CLI
-      const environmentContext = `This is the Gemini CLI. We are setting up the context for our chat.
-  Today's date is Thursday, July 24, 2025.
-  My operating system is: linux
-  I'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli
-  [... massive file listing ...]`;
-      
-      const userPrompt = 'call1: What is TypeScript?, call2: What is JavaScript?';
-      
+      const environmentContext = `This is the Gemini CLI. We are setting up the context for our chat.\n  Today's date is Thursday, July 24, 2025.\n  My operating system is: linux\n  I'm currently working in the directory: /home/julius/01_Private/02_Projects/gemini-cli\n  [... massive file listing ...]`;
+
+      const userPrompt =
+        'call1: What is TypeScript?, call2: What is JavaScript?';
+
       // This is how the request is structured in real CLI - as separate parts
       const multiPartRequest = [
         { text: environmentContext },
-        { text: userPrompt }
+        { text: userPrompt },
       ];
-      
+
       console.log('Testing multi-part request structure');
       console.log('Part 1 length:', environmentContext.length);
       console.log('Part 2:', JSON.stringify(userPrompt));
-      
-      const result = client['parseConcurrentSyntax'](multiPartRequest, 'debug-multipart');
-      
+
+      const result = client['parseConcurrentSyntax'](
+        multiPartRequest,
+        'debug-multipart',
+      );
+
       console.log('Multi-part parseConcurrentSyntax result:', result);
-      
+
       // This test should reveal if the issue is with multi-part request structure
       expect(result.hasConcurrentCalls).toBe(true);
       expect(result.calls).toHaveLength(2);
@@ -1689,15 +1781,25 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       // Arrange
       const calls = [
         { id: 'call1', prompt: 'Analyze security' },
-        { id: 'call2', prompt: 'Check performance' }
+        { id: 'call2', prompt: 'Check performance' },
       ];
       const signal = new AbortController().signal;
       const prompt_id = 'test-concurrent-prompt';
 
       // Mock stream events that will be returned by StreamAggregator
       const mockAggregatedEvents = [
-        { type: 'content', value: 'Security analysis complete', callId: 'call1', callTitle: 'Analyze security' },
-        { type: 'content', value: 'Performance check complete', callId: 'call2', callTitle: 'Check performance' }
+        {
+          type: 'content',
+          value: 'Security analysis complete',
+          callId: 'call1',
+          callTitle: 'Analyze security',
+        },
+        {
+          type: 'content',
+          value: 'Performance check complete',
+          callId: 'call2',
+          callTitle: 'Check performance',
+        },
       ];
 
       // Mock StreamAggregator.mergeStreams to return our test events
@@ -1714,11 +1816,17 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       const mockStream2 = (async function* () {
         yield { type: 'content', value: 'Performance check complete' };
       })();
-      
-      mockTurnRunFn.mockReturnValueOnce(mockStream1).mockReturnValueOnce(mockStream2);
+
+      mockTurnRunFn
+        .mockReturnValueOnce(mockStream1)
+        .mockReturnValueOnce(mockStream2);
 
       // Act
-      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const generator = client['executeConcurrentStreams'](
+        calls,
+        signal,
+        prompt_id,
+      );
       const events = [];
       for await (const event of generator) {
         events.push(event);
@@ -1726,20 +1834,29 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
 
       // Assert
       expect(mockTurnRunFn).toHaveBeenCalledTimes(2);
-      expect(mockTurnRunFn).toHaveBeenNthCalledWith(1, [{ text: 'Analyze security' }], signal);
-      expect(mockTurnRunFn).toHaveBeenNthCalledWith(2, [{ text: 'Check performance' }], signal);
-      
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(
+        1,
+        [{ text: 'Analyze security' }],
+        signal,
+      );
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(
+        2,
+        [{ text: 'Check performance' }],
+        signal,
+      );
+
       expect(mockStreamAggregatorMergeStreams).toHaveBeenCalledTimes(1);
-      expect(mockStreamAggregatorMergeStreams).toHaveBeenCalledWith([mockStream1, mockStream2]);
-      
+      expect(mockStreamAggregatorMergeStreams).toHaveBeenCalledWith([
+        mockStream1,
+        mockStream2,
+      ]);
+
       expect(events).toEqual(mockAggregatedEvents);
     });
 
     it('should yield enriched events with callId and callTitle from StreamAggregator', async () => {
       // Arrange
-      const calls = [
-        { id: 'call1', prompt: 'Test prompt 1' }
-      ];
+      const calls = [{ id: 'call1', prompt: 'Test prompt 1' }];
       const signal = new AbortController().signal;
       const prompt_id = 'test-enriched-events';
 
@@ -1748,7 +1865,7 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
         type: 'content',
         value: 'Test response',
         callId: 'call1',
-        callTitle: 'Test prompt 1'
+        callTitle: 'Test prompt 1',
       };
 
       mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
@@ -1761,7 +1878,11 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       mockTurnRunFn.mockReturnValue(mockStream);
 
       // Act
-      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const generator = client['executeConcurrentStreams'](
+        calls,
+        signal,
+        prompt_id,
+      );
       const events = [];
       for await (const event of generator) {
         events.push(event);
@@ -1779,7 +1900,7 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       const calls = [
         { id: 'call1', prompt: 'First task' },
         { id: 'call2', prompt: 'Second task' },
-        { id: 'call3', prompt: 'Third task' }
+        { id: 'call3', prompt: 'Third task' },
       ];
       const signal = new AbortController().signal;
       const prompt_id = 'test-multiple-calls';
@@ -1794,7 +1915,11 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       mockTurnRunFn.mockReturnValue(mockStream);
 
       // Act
-      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const generator = client['executeConcurrentStreams'](
+        calls,
+        signal,
+        prompt_id,
+      );
       // Consume the generator
       for await (const _ of generator) {
         // Process events
@@ -1802,26 +1927,48 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
 
       // Assert
       expect(mockTurnRunFn).toHaveBeenCalledTimes(3);
-      
+
       // Verify each Turn was created with correct prompt_id format
-      expect(mockTurnRunFn).toHaveBeenNthCalledWith(1, [{ text: 'First task' }], signal);
-      expect(mockTurnRunFn).toHaveBeenNthCalledWith(2, [{ text: 'Second task' }], signal);
-      expect(mockTurnRunFn).toHaveBeenNthCalledWith(3, [{ text: 'Third task' }], signal);
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(
+        1,
+        [{ text: 'First task' }],
+        signal,
+      );
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(
+        2,
+        [{ text: 'Second task' }],
+        signal,
+      );
+      expect(mockTurnRunFn).toHaveBeenNthCalledWith(
+        3,
+        [{ text: 'Third task' }],
+        signal,
+      );
     });
 
     it('should continue processing other streams when one stream fails (handled by StreamAggregator)', async () => {
       // Arrange
       const calls = [
         { id: 'call1', prompt: 'Failing task' },
-        { id: 'call2', prompt: 'Successful task' }
+        { id: 'call2', prompt: 'Successful task' },
       ];
       const signal = new AbortController().signal;
       const prompt_id = 'test-error-handling';
 
       // Mock StreamAggregator to handle the error and continue with other streams
       const mockEvents = [
-        { type: 'error', value: { error: { message: 'Error in call call1: Stream error' } }, callId: 'call1', callTitle: 'Failing task' },
-        { type: 'content', value: 'Success response', callId: 'call2', callTitle: 'Successful task' }
+        {
+          type: 'error',
+          value: { error: { message: 'Error in call call1: Stream error' } },
+          callId: 'call1',
+          callTitle: 'Failing task',
+        },
+        {
+          type: 'content',
+          value: 'Success response',
+          callId: 'call2',
+          callTitle: 'Successful task',
+        },
       ];
 
       mockStreamAggregatorMergeStreams.mockImplementation(async function* () {
@@ -1836,7 +1983,11 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       mockTurnRunFn.mockReturnValue(mockStream);
 
       // Act
-      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const generator = client['executeConcurrentStreams'](
+        calls,
+        signal,
+        prompt_id,
+      );
       const events = [];
       for await (const event of generator) {
         events.push(event);
@@ -1852,9 +2003,7 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
 
     it('should pass signal to all Turn instances for proper cancellation support', async () => {
       // Arrange
-      const calls = [
-        { id: 'call1', prompt: 'Cancellable task' }
-      ];
+      const calls = [{ id: 'call1', prompt: 'Cancellable task' }];
       const abortController = new AbortController();
       const signal = abortController.signal;
       const prompt_id = 'test-cancellation';
@@ -1869,13 +2018,20 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       mockTurnRunFn.mockReturnValue(mockStream);
 
       // Act
-      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const generator = client['executeConcurrentStreams'](
+        calls,
+        signal,
+        prompt_id,
+      );
       for await (const _ of generator) {
         // Process events
       }
 
       // Assert
-      expect(mockTurnRunFn).toHaveBeenCalledWith([{ text: 'Cancellable task' }], signal);
+      expect(mockTurnRunFn).toHaveBeenCalledWith(
+        [{ text: 'Cancellable task' }],
+        signal,
+      );
     });
 
     it('should handle empty calls array gracefully', async () => {
@@ -1889,7 +2045,11 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       });
 
       // Act
-      const generator = client['executeConcurrentStreams'](calls, signal, prompt_id);
+      const generator = client['executeConcurrentStreams'](
+        calls,
+        signal,
+        prompt_id,
+      );
       const events = [];
       for await (const event of generator) {
         events.push(event);
@@ -1929,14 +2089,16 @@ Got it. Thanks for the context!call1: What is TypeScript?, call2: What is JavaSc
       // Arrange
       const call = {
         id: 'call1',
-        prompt: 'Analyze code: function test() { return "hello, world!"; }'
+        prompt: 'Analyze code: function test() { return "hello, world!"; }',
       };
 
       // Act
       const result = client['buildRequestFromCall'](call);
 
       // Assert
-      expect(result).toEqual([{ text: 'Analyze code: function test() { return "hello, world!"; }' }]);
+      expect(result).toEqual([
+        { text: 'Analyze code: function test() { return "hello, world!"; }' },
+      ]);
     });
   });
 });

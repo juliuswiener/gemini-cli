@@ -13,6 +13,7 @@
 ## 1. Original Uncertainty/Problem Statement
 
 Investigate and provide technical insights for the following uncertainties identified in the strategic plan:
+
 1.  Tool Usage within Concurrent Streams (US-006): How to manage sequential tool confirmations and execution within parallel streams without deadlocks or conflicts.
 2.  LLM Accuracy for Intelligent Prompt Processing (US-002): Strategies for achieving high accuracy in LLM-based prompt analysis for concurrency and robust fallback mechanisms.
 3.  Advanced Stream Aggregation Algorithms (US-004): Algorithms and data structures for intelligent synthesis, conflict detection, and quality scoring of multiple LLM text streams.
@@ -36,19 +37,23 @@ Investigate and provide technical insights for the following uncertainties ident
 **Description:** The current `CoreToolScheduler` enforces a global lock, preventing new tool calls while others are executing or awaiting approval. This conflicts with the need for independent tool execution within concurrent streams.
 
 **Key Characteristics:**
+
 - `CoreToolScheduler` manages tool call lifecycle (validation, execution, approval).
 - `Turn.handlePendingFunctionCall()` yields `ToolCallRequest` events.
 - `sendMessageStream` needs to pause a specific stream for tool approval/execution.
 
 **Advantages:**
+
 - Centralized tool management via `CoreToolScheduler` ensures consistency and security.
 - Existing `ToolCallRequest` event and confirmation flow can be reused.
 
 **Disadvantages:**
+
 - `CoreToolScheduler`'s current design (global lock via `isRunning()`) is a blocker for concurrent tool execution.
 - Requires significant modification to `CoreToolScheduler` or a new per-stream tool scheduling mechanism.
 
 **Evaluated Options for Resolution:**
+
 1.  **Option: Modify `CoreToolScheduler` for Multiple Queues/Contexts**
     - **Description**: Enhance `CoreToolScheduler` to manage multiple independent queues of tool calls, one per concurrent stream. It would still handle global user confirmations sequentially but allow parallel processing of tool requests up to `maxConcurrentCalls`.
     - **Pros**: Reuses existing robust tool scheduling logic; maintains centralized control over approvals.
@@ -59,6 +64,7 @@ Investigate and provide technical insights for the following uncertainties ident
     - **Cons**: Duplication of `CoreToolScheduler` logic; complex global approval management; potential for conflicting tool requests (e.g., two streams trying to write to the same file simultaneously).
 
 **Relevant Links:**
+
 - [`packages/core/src/core/turn.ts`](packages/core/src/core/turn.ts)
 - [`packages/core/src/core/coreToolScheduler.ts`](packages/core/src/core/coreToolScheduler.ts)
 
@@ -69,19 +75,23 @@ Investigate and provide technical insights for the following uncertainties ident
 **Description:** Achieving high accuracy (>80%) in LLM-based classification of user prompts for sequential vs. concurrent processing, and generating well-formed, logical concurrent call structures.
 
 **Key Characteristics:**
+
 - LLM needs to classify prompt type (`sequential` | `concurrent`).
 - LLM needs to generate structured JSON output for concurrent calls.
 - Fallback mechanisms are crucial if LLM analysis fails.
 
 **Advantages:**
+
 - LLM can adapt to complex user intents beyond simple keyword matching.
 - Automates decision-making, improving user experience.
 
 **Disadvantages:**
+
 - Accuracy depends heavily on prompt engineering and LLM capabilities.
 - Potential for hallucinations or malformed JSON output.
 
 **Evaluated Options for Resolution:**
+
 1.  **Option: Advanced Prompt Engineering (Few-shot/Chain-of-Thought)**
     - **Description**: Utilize few-shot examples within the LLM prompt to demonstrate desired classification and structured output format. Incorporate Chain-of-Thought prompting (e.g., "Let's think step by step") to guide the LLM's reasoning process.
     - **Pros**: Improves accuracy and consistency of LLM output without fine-tuning. Relatively quick to implement.
@@ -96,6 +106,7 @@ Investigate and provide technical insights for the following uncertainties ident
     - **Cons**: May result in suboptimal processing if fallback is frequently triggered.
 
 **Relevant Links:**
+
 - [Prompt Engineering Guide - Dair.ai](https://github.com/dair-ai/prompt-engineering-guide) (General resource for prompt engineering techniques)
 
 ---
@@ -105,19 +116,23 @@ Investigate and provide technical insights for the following uncertainties ident
 **Description:** Implementing smarter result combination strategies for multiple LLM text streams, including conflict detection, quality scoring, confidence weighting, and cross-call relationship detection.
 
 **Key Characteristics:**
+
 - Merging `AsyncGenerator<ServerGeminiStreamEvent>` streams.
 - Beyond simple concatenation: semantic understanding of content.
 - Identifying contradictions or complementary information.
 
 **Advantages:**
+
 - Provides a more coherent and insightful aggregated response.
 - Reduces information overload for the user.
 
 **Disadvantages:**
+
 - Highly complex, requiring advanced NLP/semantic analysis.
 - No direct off-the-shelf libraries found for this specific problem.
 
 **Evaluated Options for Resolution:**
+
 1.  **Option: LLM-based Synthesis (Post-processing)**
     - **Description**: After all concurrent streams complete, feed their individual outputs (or key summaries) to another LLM instance with a prompt to perform intelligent synthesis, conflict resolution, and summarization.
     - **Pros**: Leverages LLM's natural language understanding capabilities for complex synthesis. Flexible and adaptable.
@@ -132,6 +147,7 @@ Investigate and provide technical insights for the following uncertainties ident
     - **Cons**: Can be overly simplistic; may miss subtle conflicts or important nuances.
 
 **Relevant Links:**
+
 - No direct library matches found for "intelligent synthesis" of LLM outputs. This area likely requires custom development leveraging NLP techniques or further LLM calls.
 
 ---
@@ -141,19 +157,23 @@ Investigate and provide technical insights for the following uncertainties ident
 **Description:** Optimizing for performance, cost, and reliability in production usage, including rate limiting, connection pooling, advanced error recovery, and streaming performance.
 
 **Key Characteristics:**
+
 - Concurrent API calls can hit rate limits.
 - Efficient network resource utilization.
 - Robustness against transient failures.
 
 **Advantages:**
+
 - Ensures system stability and responsiveness under load.
 - Reduces operational costs.
 
 **Disadvantages:**
+
 - Requires careful implementation to avoid introducing new bottlenecks.
 - Balancing performance with resource consumption.
 
 **Evaluated Options for Resolution:**
+
 1.  **Option: Client-Side Rate Limiting (Token Bucket/Leaky Bucket)**
     - **Description**: Implement a client-side rate limiter (e.g., using a token bucket or leaky bucket algorithm) to control the number of outgoing API requests per unit of time.
     - **Pros**: Prevents hitting API rate limits; ensures fair usage.
@@ -172,6 +192,7 @@ Investigate and provide technical insights for the following uncertainties ident
     - **Cons**: Can introduce slight latency if buffering is too aggressive.
 
 **Relevant Links:**
+
 - [Mastering API Throughput: 8 Key Strategies for Optimal Performance](https://zuplo.com/blog/2025/02/21/mastering-api-throughput)
 - [10 Best Practices for API Rate Limiting in 2025](https://zuplo.com/blog/2025/01/06/10-best-practices-for-api-rate-limiting-in-2025)
 - [Performance best practices with gRPC | Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/grpc/performance?view=aspnetcore-9.0)

@@ -66,18 +66,19 @@ export async function runNonInteractive(
   const abortController = new AbortController();
   let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
   let turnCount = 0;
-// Check for concurrent syntax in the initial input and log telemetry
-const concurrentCallRegex = /(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g;
-const matches = [...input.matchAll(concurrentCallRegex)];
+  // Check for concurrent syntax in the initial input and log telemetry
+  const concurrentCallRegex =
+    /(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g;
+  const matches = [...input.matchAll(concurrentCallRegex)];
 
-if (matches.length > 1) {
-  const calls = matches.map((match, index) => ({
-    id: match[1] || `call${index + 1}`,
-    prompt: match[2]?.trim() || '',
-  }));
-  const event = new ConcurrentSyntaxDetectedEvent(prompt_id, calls);
-  logConcurrentSyntaxDetected(config, event);
-}
+  if (matches.length > 1) {
+    const calls = matches.map((match, index) => ({
+      id: match[1] || `call${index + 1}`,
+      prompt: match[2]?.trim() || '',
+    }));
+    const event = new ConcurrentSyntaxDetectedEvent(prompt_id, calls);
+    logConcurrentSyntaxDetected(config, event);
+  }
   try {
     while (true) {
       turnCount++;

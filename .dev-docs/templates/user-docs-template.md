@@ -13,7 +13,7 @@
 
 ## 1. Welcome to [Project Name]!
 
-*A brief, friendly introduction to the software. What is it? What problem does it solve for the user? What are its main benefits?*
+_A brief, friendly introduction to the software. What is it? What problem does it solve for the user? What are its main benefits?_
 
 > **Example:** "Welcome to the File Converter CLI! This powerful command-line tool helps you quickly and easily convert your files between various formats, saving you time and ensuring your content works everywhere you need it."
 
@@ -21,31 +21,37 @@
 
 ## 2. Quick Start
 
-*The absolute minimum steps a user needs to take to get the software running and perform a basic task.*
+_The absolute minimum steps a user needs to take to get the software running and perform a basic task._
 
 ### Installation (if applicable)
+
 - [Simple instructions, e.g., "Download the latest release from [link] and place the executable in your system's PATH."]
 - Alternatively: "If you have Python installed, run: `pip install file-converter-cli`"
 
 ### Verify Installation
+
 ```bash
 file-converter --version
 ```
+
 > **Expected Output:** `file-converter version 1.0.0`
 
 ### Perform Your First Conversion
+
 ```bash
 file-converter convert my_photo.jpg my_photo.png --from jpg --to png
 ```
+
 > This command converts `my_photo.jpg` to `my_photo.png`.
 
 ---
 
 ## 3. Key Features
 
-*A concise overview of the main functionalities, focusing on user benefits and how to access them.*
+_A concise overview of the main functionalities, focusing on user benefits and how to access them._
 
 ### Convert Single Files
+
 - **What it does**: Change one file from its current format to a new one.
 - **How to use**:
   ```bash
@@ -62,6 +68,7 @@ file-converter convert my_photo.jpg my_photo.png --from jpg --to png
   > This converts `document.pdf` into a plain text file named `report.txt`.
 
 ### Convert Multiple Files (Batch Conversion)
+
 - **What it does**: Convert all files of a specific type within a folder at once.
 - **How to use**:
   ```bash
@@ -80,7 +87,7 @@ file-converter convert my_photo.jpg my_photo.png --from jpg --to png
 
 ## 4. Supported Formats
 
-*A clear list or table of supported input and output formats.*
+_A clear list or table of supported input and output formats._
 
 - **Images**:
   - **Input**: `jpg`, `png`, `gif`, `bmp`
@@ -96,7 +103,7 @@ file-converter convert my_photo.jpg my_photo.png --from jpg --to png
 
 ## 5. Troubleshooting & Common Issues
 
-*Brief guidance on common problems and how users can resolve them.*
+_Brief guidance on common problems and how users can resolve them._
 
 - **"File not found" error**:
   - **Cause**: The input file path is incorrect or the file doesn't exist.
@@ -112,7 +119,7 @@ file-converter convert my_photo.jpg my_photo.png --from jpg --to png
 
 ## 6. Getting Help
 
-*How users can get more detailed information or report issues.*
+_How users can get more detailed information or report issues._
 
 - **Command-line help**:
   ```bash
@@ -125,11 +132,12 @@ file-converter convert my_photo.jpg my_photo.png --from jpg --to png
 
 ## 7. What's New
 
-*A brief summary of the latest features or changes. Link to a full changelog if available.*
+_A brief summary of the latest features or changes. Link to a full changelog if available._
 
 ### Version [Latest Version] - [Date]
+
 - **Added**: [New feature, e.g., "Support for WebP image conversion."]
 - **Improved**: [Improvement, e.g., "Faster batch processing."]
 - **Fixed**: [Key bug fix, e.g., "Resolved issue with corrupted audio output."]
 
-*For a complete list of changes, see the Full Changelog.*
+_For a complete list of changes, see the Full Changelog._

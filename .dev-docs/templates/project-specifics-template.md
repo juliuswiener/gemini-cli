@@ -20,11 +20,13 @@ This document contains project-specific information that is critical for all AI 
 ## 🖥️ System Information
 
 ### Operating System
+
 - **Primary OS**: [e.g., Ubuntu 22.04 LTS]
 - **Supported OS**: [e.g., Linux, macOS, Windows 10+]
 - **Architecture**: [e.g., x86_64, ARM64]
 
 ### Runtime Environment
+
 - **Primary Language**: [e.g., Python 3.11+]
 - **Package Manager**: [e.g., pip, npm, cargo]
 - **Virtual Environment**: [e.g., venv, conda, poetry]
@@ -34,18 +36,21 @@ This document contains project-specific information that is critical for all AI 
 ## 📦 Dependencies & Versions
 
 ### Core Dependencies
+
 - **[Framework/Library Name]**: [Version] - [Purpose]
   - Example: **FastAPI**: 0.104.1 - Web API framework
   - Example: **SQLAlchemy**: 2.0.23 - Database ORM
   - Example: **Pytest**: 7.4.3 - Testing framework
 
 ### Development Dependencies
+
 - **[Tool Name]**: [Version] - [Purpose]
   - Example: **Black**: 23.10.1 - Code formatter
   - Example: **Flake8**: 6.1.0 - Code linter
   - Example: **MyPy**: 1.6.1 - Type checker
 
 ### System Dependencies
+
 - **[System Package]**: [Version] - [Purpose]
   - Example: **PostgreSQL**: 15+ - Primary database
   - Example: **Redis**: 7.0+ - Caching layer
@@ -71,8 +76,9 @@ This document contains project-specific information that is critical for all AI 
 ```
 
 **Directory Status:**
+
 - [ ] controllers/ - [Created/Missing]
-- [ ] services/ - [Created/Missing]  
+- [ ] services/ - [Created/Missing]
 - [ ] utils/ - [Created/Missing]
 - [ ] views/ - [Created/Missing]
 - [ ] config/ - [Created/Missing]
@@ -83,6 +89,7 @@ This document contains project-specific information that is critical for all AI 
 ## 🔧 Build & Compilation Instructions
 
 ### Environment Setup
+
 ```bash
 # Example for Python projects
 python -m venv .venv
@@ -94,6 +101,7 @@ pip install -r requirements-dev.txt
 ```
 
 ### Build Commands
+
 ```bash
 # Main build command
 [e.g., make build, npm run build, cargo build --release]
@@ -106,6 +114,7 @@ pip install -r requirements-dev.txt
 ```
 
 ### Configuration Files
+
 - **Build Config**: [e.g., Makefile, package.json, Cargo.toml, pyproject.toml]
 - **Environment Config**: [e.g., .env.example, config.yaml, settings.ini]
 
@@ -114,6 +123,7 @@ pip install -r requirements-dev.txt
 ## 🧪 Testing Instructions
 
 ### Unit Tests
+
 ```bash
 # Command to run all unit tests
 [e.g., pytest tests/unit/, npm test, cargo test]
@@ -126,6 +136,7 @@ pip install -r requirements-dev.txt
 ```
 
 ### Integration Tests
+
 ```bash
 # Command to run integration tests
 [e.g., pytest tests/integration/, npm run test:integration]
@@ -135,6 +146,7 @@ pip install -r requirements-dev.txt
 ```
 
 ### Test Configuration
+
 - **Test Framework**: [e.g., pytest, jest, cargo test]
 - **Coverage Tool**: [e.g., pytest-cov, istanbul, tarpaulin]
 - **Test Database**: [e.g., PostgreSQL test instance, SQLite in-memory]
@@ -144,7 +156,8 @@ pip install -r requirements-dev.txt
 ## 🎯 Development Lifecycle Standards
 
 ### Code Quality Tools
-- **Formatter**: [e.g., black, prettier, rustfmt] 
+
+- **Formatter**: [e.g., black, prettier, rustfmt]
   - Command: `[e.g., black src/, npm run format, cargo fmt]`
 - **Linter**: [e.g., flake8, eslint, clippy]
   - Command: `[e.g., flake8 src/, npm run lint, cargo clippy]`
@@ -152,6 +165,7 @@ pip install -r requirements-dev.txt
   - Command: `[e.g., mypy src/, npm run type-check, cargo check]`
 
 ### Pre-commit Hooks
+
 - **Enabled**: [Yes/No]
 - **Configuration**: [e.g., .pre-commit-config.yaml, husky]
 - **Hooks**: [e.g., black, flake8, mypy, tests]
@@ -160,16 +174,17 @@ pip install -r requirements-dev.txt
 
 ## 📋 Naming Conventions (Enforced)
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Functions | `snake_case` | `get_user_data()` |
-| Variables | `snake_case` | `user_email` |
-| Files | `snake_case.ext` | `user_service.py` |
-| Classes | `PascalCase` | `UserService` |
-| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRY_LIMIT` |
-| Directories | `lowercase` | `controllers`, `utils` |
+| Element     | Convention         | Example                |
+| ----------- | ------------------ | ---------------------- |
+| Functions   | `snake_case`       | `get_user_data()`      |
+| Variables   | `snake_case`       | `user_email`           |
+| Files       | `snake_case.ext`   | `user_service.py`      |
+| Classes     | `PascalCase`       | `UserService`          |
+| Constants   | `UPPER_SNAKE_CASE` | `MAX_RETRY_LIMIT`      |
+| Directories | `lowercase`        | `controllers`, `utils` |
 
 ### Language-Specific Conventions
+
 - **[Language]**: [Additional conventions specific to the programming language]
   - Example: **Python**: Use type hints for all function parameters and returns
   - Example: **JavaScript**: Use camelCase for variables, PascalCase for constructors
@@ -180,12 +195,14 @@ pip install -r requirements-dev.txt
 ## 🔒 Security & Environment
 
 ### Environment Variables
-- **Required Variables**: 
+
+- **Required Variables**:
   - `[VAR_NAME]` - [Description]
   - Example: `DATABASE_URL` - PostgreSQL connection string
   - Example: `JWT_SECRET` - Secret key for JWT token signing
 
 ### Security Tools
+
 - **Dependency Scanner**: [e.g., safety, npm audit, cargo audit]
   - Command: `[e.g., safety check, npm audit, cargo audit]`
 - **Static Analysis**: [e.g., bandit, sonarqube, semgrep]
@@ -196,12 +213,14 @@ pip install -r requirements-dev.txt
 ## 📝 Documentation Standards
 
 ### Required Documentation
+
 - **README.md**: Project overview, setup, usage
 - **API Documentation**: [e.g., OpenAPI/Swagger, JSDoc, rustdoc]
 - **Architecture Documentation**: High-level system design
 - **Changelog**: Version history and changes
 
 ### Documentation Generation
+
 ```bash
 # Generate API docs
 [e.g., sphinx-build docs/ docs/_build/, npm run docs, cargo doc]
@@ -215,11 +234,13 @@ pip install -r requirements-dev.txt
 ## 🚀 Deployment Information
 
 ### Build Artifacts
+
 - **Output Directory**: [e.g., dist/, build/, target/release/]
 - **Main Executable**: [e.g., main.py, index.js, binary-name]
 - **Dependencies**: [e.g., requirements.txt bundled, node_modules excluded]
 
 ### Container Configuration
+
 - **Docker**: [Yes/No]
 - **Dockerfile Location**: [e.g., ./Dockerfile, ./docker/Dockerfile]
 - **Base Image**: [e.g., python:3.11-slim, node:18-alpine]
@@ -229,11 +250,13 @@ pip install -r requirements-dev.txt
 ## 📊 Performance & Monitoring
 
 ### Performance Requirements
+
 - **Memory Limit**: [e.g., 512MB typical, 1GB max]
 - **CPU Usage**: [e.g., Single-threaded, multi-core capable]
 - **Response Time**: [e.g., <200ms for API calls, <5s for batch operations]
 
 ### Monitoring & Logging
+
 - **Log Level**: [e.g., INFO in production, DEBUG in development]
 - **Log Format**: [e.g., JSON structured, plain text]
 - **Metrics**: [e.g., Prometheus, application-specific metrics]
@@ -243,11 +266,13 @@ pip install -r requirements-dev.txt
 ## 🔄 Version Control & CI/CD
 
 ### Git Workflow
+
 - **Branching Strategy**: [e.g., Git Flow, GitHub Flow, trunk-based]
 - **Commit Convention**: [e.g., Conventional Commits, semantic commits]
 - **Required Checks**: [e.g., tests pass, linting clean, security scan]
 
 ### CI/CD Pipeline
+
 - **Platform**: [e.g., GitHub Actions, GitLab CI, Jenkins]
 - **Pipeline File**: [e.g., .github/workflows/ci.yml, .gitlab-ci.yml, Jenkinsfile]
 - **Deployment Stages**: [e.g., test → staging → production]
@@ -257,6 +282,7 @@ pip install -r requirements-dev.txt
 ## 🚨 Critical Notes for AI Modes
 
 ### Mandatory Rules
+
 1. **Never modify this file** without explicit user approval
 2. **Always follow the naming conventions** specified above
 3. **Use the exact build/test commands** provided in this document
@@ -264,6 +290,7 @@ pip install -r requirements-dev.txt
 5. **Check environment setup** before attempting builds or tests
 
 ### Common Pitfalls to Avoid
+
 - [ ] Installing dependencies globally instead of in virtual environment
 - [ ] Using incorrect file naming conventions
 - [ ] Ignoring build failures and proceeding with broken code
@@ -275,13 +302,15 @@ pip install -r requirements-dev.txt
 ## 📞 Support & Resources
 
 ### Documentation Links
+
 - **Project Repository**: [e.g., https://github.com/org/project]
 - **Issue Tracker**: [e.g., GitHub Issues, Jira, etc.]
 - **Wiki/Confluence**: [Internal documentation links]
 
 ### Key Personnel
+
 - **Project Owner**: [Name/Role]
-- **Lead Developer**: [Name/Role]  
+- **Lead Developer**: [Name/Role]
 - **DevOps Contact**: [Name/Role]
 
 ---

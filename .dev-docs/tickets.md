@@ -1,17 +1,24 @@
 # Development Tickets: Iteration 1: Core Concurrency MVP
+
 - **Iteration ID**: Iteration-1-MVP
 - **Link to Iteration Plan**: [`./.dev-docs/iteration-plan.md#iteration-1-core-concurrency-mvp`](./.dev-docs/iteration-plan.md#iteration-1-core-concurrency-mvp)
 - **Iteration Period**: TBD – TBD
 - **Planned By**: Strategic Planner Mode
 - **Detailed By**: Detailler Mode
 - **Last Updated**: 2025-07-29 11:32 UTC+2:00
+
 ---
+
 ## Overview
-This document contains all detailed development tickets for the iteration. Each ticket represents an atomic, actionable task derived from the Strategic Planner's Iteration Plan and refined with architectural guidance from the Detailler Mode. This document also serves as the primary tracking log for progress, issues, and resolution of all tasks within this iteration.
----
+
+## This document contains all detailed development tickets for the iteration. Each ticket represents an atomic, actionable task derived from the Strategic Planner's Iteration Plan and refined with architectural guidance from the Detailler Mode. This document also serves as the primary tracking log for progress, issues, and resolution of all tasks within this iteration.
+
 ## Tickets for This Iteration
+
 ---
+
 ### Ticket: T-001: Implement `parseConcurrentSyntax` function
+
 - **Ticket ID**: T-001
 - **Related User Story**: US-001: Basic User-Directed Concurrent Calls
   - **Link**: [`./.dev-docs/user-stories.md#user-story-basic-user-directed-concurrent-calls`](./.dev-docs/user-stories.md#user-story-basic-user-directed-concurrent-calls)
@@ -19,28 +26,35 @@ This document contains all detailed development tickets for the iteration. Each 
 - **Status**: Done
 - **Priority**: Critical
 - **Estimated Effort**: Small
+
 #### 1. Task Description
+
 Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts). This method will be responsible for parsing user input (`PartListUnion`) to detect explicit concurrent call syntax (e.g., `call1: prompt1, call2: prompt2`). It should extract the `callId` and `prompt` for each detected concurrent call. The implementation should leverage existing text extraction utilities like `partToString`.
 
 #### 2. Architectural Guidance
+
 - **Responsible Module**: `packages/core/src/core`
   - **Sub-module/File**: [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts)
 - **Key Function/Method to Implement/Modify**:
   `GeminiClient.parseConcurrentSyntax(request: PartListUnion): ConcurrencyAnalysis`
   - **Pseudocode**:
+
     ```typescript
     // In packages/core/src/core/client.ts
     class GeminiClient {
       // ... existing methods ...
 
-      private parseConcurrentSyntax(request: PartListUnion): ConcurrencyAnalysis {
+      private parseConcurrentSyntax(
+        request: PartListUnion,
+      ): ConcurrencyAnalysis {
         const textInput = partToString(request); // Use existing utility
         const concurrentCalls: ConcurrentCall[] = [];
         let hasConcurrentCalls = false;
 
         // Regex to find patterns like "callN: " followed by content
         // Example: /(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g
-        const regex = /(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g;
+        const regex =
+          /(call\d+):\s*((?:[^,]|,(?!\s*call\d+:))*)(?=,\s*call\d+:|$)/g;
         let match;
 
         while ((match = regex.exec(textInput)) !== null) {
@@ -52,7 +66,11 @@ Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`
 
         // Handle cases where no explicit callN: syntax is found, but it might be a single implicit call
         // Or if the input is not a string, handle gracefully.
-        if (!hasConcurrentCalls && typeof request === 'string' && request.trim().length > 0) {
+        if (
+          !hasConcurrentCalls &&
+          typeof request === 'string' &&
+          request.trim().length > 0
+        ) {
           // Consider if a single prompt without "callN:" should be treated as a single concurrent call
           // For Increment 1, if no "callN:" syntax, it's not concurrent.
         }
@@ -61,6 +79,7 @@ Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`
       }
     }
     ```
+
 - **Dependencies**:
   - Internal: `partToString` from `../utils/partUtils.js`
   - External: `@google/genai` (for `PartListUnion` type)
@@ -70,8 +89,11 @@ Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`
   - Variables: `textInput`, `concurrentCalls`, `hasConcurrentCalls`, `regex`, `match`, `callId`, `prompt`
 - **Scope within Module**:
   This method is purely for parsing and data structuring. It does not interact with the Gemini API or manage streams directly.
+
 ---
+
 #### 3. Data Flow & Interfaces
+
 - **Inputs**:
   - `request`: `PartListUnion` - The raw user input, which can be a string, an array of `Part` objects, or a single `Part` object.
 - **Outputs**:
@@ -87,8 +109,11 @@ Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`
 - **Interactions**:
   - Called by `GeminiClient.sendMessageStream()`.
   - Consumes `PartListUnion` and produces `ConcurrencyAnalysis`.
+
 ---
+
 #### 4. Acceptance Criteria
+
 - **Valid Concurrent Syntax**:
   - `parseConcurrentSyntax("call1: analyze security, call2: check performance")` returns `hasConcurrentCalls: true` and `calls: [{ id: "call1", prompt: "analyze security" }, { id: "call2", prompt: "check performance" }]`.
   - `parseConcurrentSyntax("call1: prompt only")` returns `hasConcurrentCalls: true` and `calls: [{ id: "call1", prompt: "prompt only" }]`.
@@ -102,21 +127,33 @@ Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`
   - `parseConcurrentSyntax("call1: prompt1, some other text, call2: prompt2")` should ideally extract `call1` and `call2` correctly, ignoring the intermediate "some other text".
 - **PartListUnion Variants**:
   - Function correctly extracts text content from `PartListUnion` inputs that are `string`, `Part[]`, or `Part` (e.g., `text` part, `inlineData` part).
+
 ---
+
 #### 5. Progress & Updates
+
 - [ ]
+
 ---
+
 #### 6. Issues & Blocks
+
 - [ ]
+
 ---
+
 #### 7. Code References
+
 - **File Paths**:
   - [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts)
   - [`packages/core/src/core/client.test.ts`](packages/core/src/core/client.test.ts) (for new unit tests)
   - [`packages/core/src/utils/partUtils.ts`](packages/core/src/utils/partUtils.ts) (for `partToString` reference)
 - **Relevant Commits**: [Insert Git commit links or hashes]
+
 ---
+
 ### Ticket: T-002: Integrate `parseConcurrentSyntax` into `sendMessageStream`
+
 - **Ticket ID**: T-002
 - **Related User Story**: US-001: Basic User-Directed Concurrent Calls
   - **Link**: [`./.dev-docs/user-stories.md#user-story-basic-user-directed-concurrent-calls`](./.dev-docs/user-stories.md#user-story-basic-user-directed-concurrent-calls)
@@ -124,15 +161,19 @@ Develop the `parseConcurrentSyntax` method within the `GeminiClient` class in [`
 - **Status**: Done
 - **Priority**: Critical
 - **Estimated Effort**: Small
+
 #### 1. Task Description
-Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts) to integrate the newly created `parseConcurrentSyntax` method (from T-001). The `sendMessageStream` method should call `parseConcurrentSyntax` and, based on its `hasConcurrentCalls` result, route the request to either the new concurrent processing flow (which will be implemented in T-004, currently a placeholder) or continue with the existing sequential processing flow.
----
+
+## Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts) to integrate the newly created `parseConcurrentSyntax` method (from T-001). The `sendMessageStream` method should call `parseConcurrentSyntax` and, based on its `hasConcurrentCalls` result, route the request to either the new concurrent processing flow (which will be implemented in T-004, currently a placeholder) or continue with the existing sequential processing flow.
+
 #### 2. Architectural Guidance
+
 - **Responsible Module**: `packages/core/src/core`
   - **Sub-module/File**: [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts)
 - **Key Function/Method to Implement/Modify**:
   `GeminiClient.sendMessageStream(request: PartListUnion, signal: AbortSignal, prompt_id: string): AsyncGenerator<ServerGeminiStreamEvent, Turn>`
   - **Pseudocode for `sendMessageStream` modification**:
+
     ```typescript
     // In packages/core/src/core/client.ts, inside sendMessageStream method
     // ... existing code ...
@@ -162,6 +203,7 @@ Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core
 
     return turn;
     ```
+
 - **Dependencies**:
   - Internal: `GeminiClient.parseConcurrentSyntax` (T-001), `GeminiClient.executeConcurrentStreams` (T-004 - will be implemented later, so this ticket will use a placeholder/dummy call for now).
   - External: None
@@ -169,8 +211,11 @@ Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core
   - Variables: `concurrencyAnalysis`
 - **Scope within Module**:
   This task focuses solely on the conditional branching logic within `sendMessageStream` based on the output of `parseConcurrentSyntax`. It does not involve the actual implementation of parallel API calls or stream aggregation, which are covered in subsequent tickets.
+
 ---
+
 #### 3. Data Flow & Interfaces
+
 - **Inputs**:
   - `request`: `PartListUnion` - The user's input prompt.
   - `signal`: `AbortSignal` - For cancellation.
@@ -184,16 +229,22 @@ Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core
 - **Interactions**:
   - Calls `parseConcurrentSyntax`.
   - Conditionally calls either the existing `Turn.run()` method or a placeholder for `executeConcurrentStreams`.
+
 ---
+
 #### 4. Acceptance Criteria
+
 - **Concurrent Path Activation**:
   - When `parseConcurrentSyntax` returns `hasConcurrentCalls: true`, `sendMessageStream` executes the code path intended for concurrent processing (e.g., logs a message, yields a placeholder event, or calls a dummy `executeConcurrentStreams` function).
 - **Sequential Path Preservation**:
   - When `parseConcurrentSyntax` returns `hasConcurrentCalls: false`, `sendMessageStream` continues with the original sequential `Turn.run()` logic, and existing sequential functionality remains unchanged and fully functional.
 - **No Regression**:
   - All existing unit and integration tests for `sendMessageStream` (for sequential prompts) continue to pass.
+
 ---
+
 #### 5. Progress & Updates
+
 - [x] **[2025-07-29 12:02 UTC+2:00]** – Coder Mode: Successfully integrated `parseConcurrentSyntax` into `sendMessageStream` method
   - Modified `sendMessageStream` to call `parseConcurrentSyntax` and branch based on `hasConcurrentCalls` result
   - When concurrent calls are detected, now routes to `executeConcurrentStreams` instead of just logging
@@ -207,17 +258,26 @@ Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core
   - Tests verify proper integration with `executeConcurrentStreams` and event yielding
   - Tests ensure sequential path remains unchanged and functional
   - Error handling tests confirm graceful failure propagation
+
 ---
+
 #### 6. Issues & Blocks
+
 - [ ]
+
 ---
+
 #### 7. Code References
+
 - **File Paths**:
   - [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts)
   - [`packages/core/src/core/client.test.ts`](packages/core/src/core/client.test.ts) (for new unit tests to verify branching)
 - **Relevant Commits**: [Insert Git commit links or hashes]
+
 ---
+
 ### Ticket: T-003: Implement `StreamAggregator` class
+
 - **Ticket ID**: T-003
 - **Related User Story**: US-004: Real-time Aggregated Streaming Output
   - **Link**: [`./.dev-docs/user-stories.md#user-story-real-time-aggregated-streaming-output`](./.dev-docs/user-stories.md#user-story-real-time-aggregated-streaming-output)
@@ -225,10 +285,13 @@ Modify the `GeminiClient.sendMessageStream()` method in [`packages/core/src/core
 - **Status**: Done
 - **Priority**: Critical
 - **Estimated Effort**: Medium
+
 #### 1. Task Description
-Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregator.ts`](packages/core/src/core/streamAggregator.ts) (or similar appropriate location within `packages/core/src/core`). This class will be responsible for merging multiple `AsyncGenerator<ServerGeminiStreamEvent>` streams into a single coherent output stream. It should include basic error handling for individual streams (i.e., an error in one stream should not halt others) and enrich events with `callId` and `callTitle` metadata.
----
+
+## Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregator.ts`](packages/core/src/core/streamAggregator.ts) (or similar appropriate location within `packages/core/src/core`). This class will be responsible for merging multiple `AsyncGenerator<ServerGeminiStreamEvent>` streams into a single coherent output stream. It should include basic error handling for individual streams (i.e., an error in one stream should not halt others) and enrich events with `callId` and `callTitle` metadata.
+
 #### 2. Architectural Guidance
+
 - **Responsible Module**: `packages/core/src/core`
   - **Sub-module/File**: [`packages/core/src/core/streamAggregator.ts`](packages/core/src/core/streamAggregator.ts) (new file)
 - **Key Class/Method to Implement/Modify**:
@@ -236,6 +299,7 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
   - **Constructor**: `constructor(calls: ConcurrentCall[])` - Stores metadata about the concurrent calls for attribution.
   - **Method**: `async *mergeStreams(streams: AsyncGenerator<ServerGeminiStreamEvent>[]): AsyncGenerator<ServerGeminiStreamEvent>`
   - **Pseudocode for `StreamAggregator.mergeStreams`**:
+
     ```typescript
     // In packages/core/src/core/streamAggregator.ts
     import { ServerGeminiStreamEvent } from '@google/genai'; // Assuming this path
@@ -245,18 +309,20 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
       private callMetadata: Map<string, ConcurrentCall>;
 
       constructor(calls: ConcurrentCall[]) {
-        this.callMetadata = new Map(calls.map(call => [call.id, call]));
+        this.callMetadata = new Map(calls.map((call) => [call.id, call]));
       }
 
-      async *mergeStreams(streams: AsyncGenerator<ServerGeminiStreamEvent>[]): AsyncGenerator<ServerGeminiStreamEvent> {
+      async *mergeStreams(
+        streams: AsyncGenerator<ServerGeminiStreamEvent>[],
+      ): AsyncGenerator<ServerGeminiStreamEvent> {
         const activeGenerators = streams.map((generator, index) => ({
           generator,
           callId: Array.from(this.callMetadata.keys())[index], // Simple mapping for now
           done: false,
-          buffer: [] // Optional: for reordering or buffering if needed later
+          buffer: [], // Optional: for reordering or buffering if needed later
         }));
 
-        while (activeGenerators.some(g => !g.done)) {
+        while (activeGenerators.some((g) => !g.done)) {
           for (const genInfo of activeGenerators) {
             if (genInfo.done) continue;
 
@@ -270,14 +336,21 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
                 const enrichedEvent = {
                   ...value,
                   callId: genInfo.callId,
-                  callTitle: originalCall?.prompt || genInfo.callId // Use prompt as title
+                  callTitle: originalCall?.prompt || genInfo.callId, // Use prompt as title
                 };
                 yield enrichedEvent;
               }
             } catch (error) {
               // Basic error handling: log and mark as done, but don't stop other streams
-              console.error(`Stream for call ${genInfo.callId} encountered an error:`, error);
-              yield { type: 'error', value: `Error in call ${genInfo.callId}: ${error.message}`, callId: genInfo.callId };
+              console.error(
+                `Stream for call ${genInfo.callId} encountered an error:`,
+                error,
+              );
+              yield {
+                type: 'error',
+                value: `Error in call ${genInfo.callId}: ${error.message}`,
+                callId: genInfo.callId,
+              };
               genInfo.done = true;
             }
           }
@@ -287,6 +360,7 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
       }
     }
     ```
+
 - **Dependencies**:
   - Internal: `ServerGeminiStreamEvent` type (from `@google/genai`), `ConcurrentCall` type (from `client.ts`).
   - External: None
@@ -296,8 +370,11 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
   - Variables: `activeGenerators`, `genInfo`, `enrichedEvent`, `callMetadata`
 - **Scope within Module**:
   Focus on the mechanics of merging asynchronous generators, basic error isolation, and event enrichment. This class is a utility for `executeConcurrentStreams`.
+
 ---
+
 #### 3. Data Flow & Interfaces
+
 - **Inputs**:
   - `streams`: `AsyncGenerator<ServerGeminiStreamEvent>[]` - An array of asynchronous generators, each representing the streaming output from a single parallel API call (`Turn.run()`).
   - `calls`: `ConcurrentCall[]` - An array of `ConcurrentCall` objects, providing metadata (like `id` and `prompt`) for each stream to be merged.
@@ -312,8 +389,11 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
 - **Interactions**:
   - Instantiated by `GeminiClient.executeConcurrentStreams()`.
   - Consumes multiple `AsyncGenerator`s and produces a single `AsyncGenerator`.
+
 ---
+
 #### 4. Acceptance Criteria
+
 - **Successful Merging**:
   - `mergeStreams` successfully combines events from 2-3 parallel `AsyncGenerator`s into a single output stream.
 - **Real-time Delivery & Attribution**:
@@ -324,8 +404,11 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
   - The error from the failed stream is either propagated as an error event within the aggregated stream or logged, without crashing the `StreamAggregator`.
 - **Type Integrity**:
   - The output stream maintains the `ServerGeminiStreamEvent` type, with added `callId` and `callTitle` properties.
+
 ---
+
 #### 5. Progress & Updates
+
 - [x] **[2025-07-29 11:52 UTC+2:00]** – Coder Mode: Implemented StreamAggregator class in `packages/core/src/core/streamAggregator.ts`
   - Created the main StreamAggregator class with constructor accepting ConcurrentCall[]
   - Implemented mergeStreams method that combines multiple AsyncGenerator streams
@@ -338,18 +421,27 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
   - Tested error isolation and continued processing of healthy streams
   - Validated type integrity with ServerGeminiStreamEvent + added properties
   - Edge cases: empty streams, immediate completion, missing metadata
+
 ---
+
 #### 6. Issues & Blocks
+
 - [ ]
+
 ---
+
 #### 7. Code References
+
 - **File Paths**:
   - [`packages/core/src/core/streamAggregator.ts`](packages/core/src/core/streamAggregator.ts) ✅ **Created**
   - [`packages/core/src/core/streamAggregator.test.ts`](packages/core/src/core/streamAggregator.test.ts) ✅ **Created**
   - [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts) (for `ConcurrentCall` type reference)
 - **Relevant Commits**: Ready for commit
+
 ---
+
 ### Ticket: T-004: Implement `executeConcurrentStreams` function
+
 - **Ticket ID**: T-004
 - **Related User Story**: US-004: Real-time Aggregated Streaming Output
   - **Link**: [`./.dev-docs/user-stories.md#user-story-real-time-aggregated-streaming-output`](./.dev-docs/user-stories.md#user-story-real-time-aggregated-streaming-output)
@@ -357,15 +449,19 @@ Create a new `StreamAggregator` class in [`packages/core/src/core/streamAggregat
 - **Status**: Done
 - **Priority**: Critical
 - **Estimated Effort**: Medium
+
 #### 1. Task Description
-Implement the `executeConcurrentStreams` method within the `GeminiClient` class in [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts). This method will take an array of `ConcurrentCall` objects (from T-001), create a `Turn` instance for each, build appropriate requests (reusing existing context building logic), and execute these `Turn.run()` calls in parallel. It will then use the `StreamAggregator` (T-003) to merge the resulting `AsyncGenerator` streams. Events yielded from this function must be enriched with `callId` and `callTitle` for attribution.
----
+
+## Implement the `executeConcurrentStreams` method within the `GeminiClient` class in [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts). This method will take an array of `ConcurrentCall` objects (from T-001), create a `Turn` instance for each, build appropriate requests (reusing existing context building logic), and execute these `Turn.run()` calls in parallel. It will then use the `StreamAggregator` (T-003) to merge the resulting `AsyncGenerator` streams. Events yielded from this function must be enriched with `callId` and `callTitle` for attribution.
+
 #### 2. Architectural Guidance
+
 - **Responsible Module**: `packages/core/src/core`
   - **Sub-module/File**: [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts)
 - **Key Function/Method to Implement/Modify**:
   `GeminiClient.executeConcurrentStreams(calls: ConcurrentCall[], signal: AbortSignal, prompt_id: string): AsyncGenerator<ServerGeminiStreamEvent>`
   - **Pseudocode**:
+
     ```typescript
     // In packages/core/src/core/client.ts
     import { Turn } from './turn'; // Assuming Turn is imported
@@ -417,6 +513,7 @@ Implement the `executeConcurrentStreams` method within the `GeminiClient` class 
       }
     }
     ```
+
 - **Dependencies**:
   - Internal: `Turn` class (`packages/core/src/core/turn.ts`), `StreamAggregator` class (T-003, `packages/core/src/core/streamAggregator.ts`), `ConcurrentCall` type (from T-001).
   - External: `@google/genai` (for `ServerGeminiStreamEvent`, `PartListUnion`).
@@ -425,8 +522,11 @@ Implement the `executeConcurrentStreams` method within the `GeminiClient` class 
   - Variables: `turns`, `streams`, `streamAggregator`, `requestForCall`
 - **Scope within Module**:
   This method orchestrates the parallel execution of multiple `Turn` instances and their streaming outputs. It relies on `StreamAggregator` for merging.
+
 ---
+
 #### 3. Data Flow & Interfaces
+
 - **Inputs**:
   - `calls`: `ConcurrentCall[]` - An array of parsed concurrent prompts, each containing an `id` and `prompt`.
   - `signal`: `AbortSignal` - An abort signal to allow cancellation of ongoing operations.
@@ -444,8 +544,11 @@ Implement the `executeConcurrentStreams` method within the `GeminiClient` class 
   - Creates and manages multiple `Turn` instances.
   - Utilizes `StreamAggregator` to combine results.
   - Interacts with the underlying Gemini API via `Turn.run()`.
+
 ---
+
 #### 4. Acceptance Criteria
+
 - **Parallel Execution**:
   - `executeConcurrentStreams` successfully creates and runs multiple `Turn` instances in parallel, initiating API calls for each concurrent prompt.
 - **Stream Merging**:
@@ -458,8 +561,11 @@ Implement the `executeConcurrentStreams` method within the `GeminiClient` class 
   - If one parallel call fails (e.g., due to an API error), other calls continue processing, and the error is reflected in the aggregated stream (as handled by `StreamAggregator`). The overall function does not crash.
 - **Context Preservation**:
   - Each individual `Turn` instance created for a concurrent call receives the correct and complete session context (files, memory, tool schemas).
+
 ---
+
 #### 5. Progress & Updates
+
 - [x] **[2025-07-29 11:58 UTC+2:00]** – Coder Mode: Implemented `executeConcurrentStreams` method in `packages/core/src/core/client.ts`
   - Added StreamAggregator import to client.ts
   - Implemented the main executeConcurrentStreams method that creates multiple Turn instances
@@ -477,19 +583,28 @@ Implement the `executeConcurrentStreams` method within the `GeminiClient` class 
   - Tested error handling scenarios (errors handled by StreamAggregator)
   - Validated signal propagation for cancellation support
   - Edge cases: empty calls array, complex prompts, special characters
+
 ---
+
 #### 6. Issues & Blocks
+
 - [ ]
+
 ---
+
 #### 7. Code References
+
 - **File Paths**:
   - [`packages/core/src/core/client.ts`](packages/core/src/core/client.ts) ✅ **Modified**
   - [`packages/core/src/core/client.test.ts`](packages/core/src/core/client.test.ts) ✅ **Extended with tests**
   - [`packages/core/src/core/turn.ts`](packages/core/src/core/turn.ts)
   - [`packages/core/src/core/streamAggregator.ts`](packages/core/src/core/streamAggregator.ts) (T-003)
 - **Relevant Commits**: Ready for commit
+
 ---
+
 ### Ticket: T-005: Integrate basic concurrency config
+
 - **Ticket ID**: T-005
 - **Related User Story**: US-007: Configurable Concurrency Settings
   - **Link**: [`./.dev-docs/user-stories.md#user-story-configurable-concurrency-settings`](./.dev-docs/user-stories.md#user-story-configurable-concurrency-settings)
@@ -497,16 +612,20 @@ Implement the `executeConcurrentStreams` method within the `GeminiClient` class 
 - **Status**: To Do
 - **Priority**: Should-have
 - **Estimated Effort**: Small
+
 #### 1. Task Description
-Extend the `ConfigParameters` interface and the `Config` class in [`packages/core/src/config/config.ts`](packages/core/src/config/config.ts) to include new concurrency-related properties: `enabled`, `maxConcurrentCalls`, and `forceProcessing`. Implement corresponding getter methods (`getConcurrencyEnabled`, `getMaxConcurrentCalls`, `getForcedProcessingMode`). Ensure default values are set and that the configuration can be loaded from `settings.json` and environment variables.
----
+
+## Extend the `ConfigParameters` interface and the `Config` class in [`packages/core/src/config/config.ts`](packages/core/src/config/config.ts) to include new concurrency-related properties: `enabled`, `maxConcurrentCalls`, and `forceProcessing`. Implement corresponding getter methods (`getConcurrencyEnabled`, `getMaxConcurrentCalls`, `getForcedProcessingMode`). Ensure default values are set and that the configuration can be loaded from `settings.json` and environment variables.
+
 #### 2. Architectural Guidance
+
 - **Responsible Module**: `packages/core/src/config`
   - **Sub-module/File**: [`packages/core/src/config/config.ts`](packages/core/src/config/config.ts)
 - **Key Class/Method to Implement/Modify**:
   - `interface ConfigParameters`
   - `class Config` (constructor and new getter methods)
   - **Pseudocode for `ConfigParameters` and `Config` modifications**:
+
     ```typescript
     // In packages/core/src/config/config.ts
 
@@ -550,6 +669,7 @@ Extend the `ConfigParameters` interface and the `Config` class in [`packages/cor
       // ... existing methods ...
     }
     ```
+
 - **Dependencies**:
   - Internal: None
   - External: None
@@ -558,8 +678,11 @@ Extend the `ConfigParameters` interface and the `Config` class in [`packages/cor
   - Getters: `getConcurrencyEnabled`, `getMaxConcurrentCalls`, `getForcedProcessingMode`
 - **Scope within Module**:
   This task is purely for configuration management. It does not involve direct application of these settings to the CLI's operational logic, which will be handled in other tickets (e.g., T-002, T-004).
+
 ---
+
 #### 3. Data Flow & Interfaces
+
 - **Inputs**:
   - `ConfigParameters` object (passed to `Config` constructor, typically from parsed `settings.json` or environment variables).
   - `settings.json` file (implicitly read by the `Config` loading mechanism).
@@ -572,8 +695,11 @@ Extend the `ConfigParameters` interface and the `Config` class in [`packages/cor
 - **Interactions**:
   - The `Config` instance is typically created once at application startup.
   - Other modules (e.g., `GeminiClient`) will query the `Config` instance using the new getter methods to retrieve concurrency settings.
+
 ---
+
 #### 4. Acceptance Criteria
+
 - **Interface and Class Extension**:
   - The `ConfigParameters` interface is updated to include a `concurrency` object with optional `enabled` (boolean), `maxConcurrentCalls` (number), and `forceProcessing` ('sequential' | 'concurrent') properties.
   - The `Config` class constructor correctly initializes these properties, setting `enabled` to `true` and `maxConcurrentCalls` to `3` by default if not provided.
@@ -585,20 +711,32 @@ Extend the `ConfigParameters` interface and the `Config` class in [`packages/cor
   - CLI flags (if applicable, though this ticket focuses on `Config` class) should take highest precedence (as per `implementation_guide.md`).
 - **Unit Test Coverage**:
   - New unit tests are added to `packages/core/src/config/config.test.ts` to verify the correct loading, initialization, and retrieval of all new concurrency settings from various sources.
+
 ---
+
 #### 5. Progress & Updates
+
 - [ ]
+
 ---
+
 #### 6. Issues & Blocks
+
 - [ ]
+
 ---
+
 #### 7. Code References
+
 - **File Paths**:
   - [`packages/core/src/config/config.ts`](packages/core/src/config/config.ts)
   - [`packages/core/src/config/config.test.ts`](packages/core/src/config/config.test.ts) (for new unit tests)
 - **Relevant Commits**: [Insert Git commit links or hashes]
+
 ---
+
 ### Ticket: T-006: Ensure build protocol adherence (Ongoing Process)
+
 - **Ticket ID**: T-006
 - **Related User Story**: US-008: Standardized Build Process, US-009: Build Failure Diagnosis, US-010: Incremental Feature Development, US-011: Rigorous Per-Increment Testing, US-012: Issue Tracking and Resolution
   - **Link**: [`./.dev-docs/user-stories.md#user-story-standardized-build-process`](./.dev-docs/user-stories.md#user-story-standardized-build-process) (and others)
@@ -606,43 +744,64 @@ Extend the `ConfigParameters` interface and the `Config` class in [`packages/cor
 - **Status**: In Progress
 - **Priority**: Must-have
 - **Estimated Effort**: Ongoing
+
 #### 1. Task Description
+
 This is an ongoing process task to ensure continuous adherence to the project's defined development lifecycle standards. This includes:
+
 - Following the standardized build protocol (`npm install`, `npm run preflight`, `npm run build all`).
 - Utilizing `git diff HEAD` for efficient build failure diagnosis.
 - Implementing features incrementally, with small, testable units.
 - Adhering to the rigorous per-increment testing protocol (unit, integration, CLI executor, performance, error scenarios).
 - Diligently tracking all issues and their resolutions in `.chorus/issue_tracker.md`.
+
 ---
+
 #### 2. Architectural Guidance
+
 - **Responsible Module**: N/A (Process adherence)
   - **Sub-module/File**: N/A
 - **Key Function/Method to Implement/Modify**: N/A
 - **Dependencies**: N/A
 - **Relevant Naming Conventions**: N/A
 - **Scope within Module**: Applies across all modules and development activities.
+
 ---
+
 #### 3. Data Flow & Interfaces
+
 - **Inputs**: Developer actions, code changes, test results.
 - **Outputs**: Clean builds, passing tests, documented issues, incremental progress.
 - **Transformation**: N/A
 - **Interactions**: N/A
+
 ---
+
 #### 4. Acceptance Criteria
+
 - All code changes are preceded by successful `npm run preflight` and `npm run build all`.
 - When a build fails, `git diff HEAD` is used to identify the source of the error.
 - New features are broken down into small, shippable increments.
 - Each increment passes all relevant unit, integration, and CLI executor tests.
 - All identified bugs or issues are logged and updated in `.chorus/issue_tracker.md`.
 - No regressions are introduced in existing functionality.
+
 ---
+
 #### 5. Progress & Updates
+
 - **[Date: 2025-07-29]** – Detailler Mode: Initial context added. This ticket is ongoing and will be updated by Coder/Tester/Debugger modes.
+
 ---
+
 #### 6. Issues & Blocks
+
 - [ ]
+
 ---
+
 #### 7. Code References
+
 - **File Paths**:
   - [`.chorus/build_protocol.md`](.chorus/build_protocol.md)
   - [`.chorus/implementation_guide.md`](.chorus/implementation_guide.md) (Section 4: Rigorous Testing Strategy)

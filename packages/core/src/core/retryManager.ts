@@ -5,7 +5,6 @@
  */
 
 import { Config } from '../config/config.js';
-import { RetryAttemptEvent } from '../telemetry/types.js';
 
 export interface RetryConfig {
   maxRetries: number;
@@ -49,12 +48,12 @@ export class RetryManager {
   shouldRetry(callId: string, error: Error): boolean {
     const context = this.getRetryContext(callId) || { callId, attempt: 0 };
     const config = this.defaultConfig;
-    
+
     // Check if we've exceeded max retries
     if (context.attempt >= config.maxRetries) {
       return false;
     }
-    
+
     // Check if error is retryable
     return this.isRetryableError(error, config);
   }
@@ -70,16 +69,16 @@ export class RetryManager {
   async executeWithRetry<T>(
     callId: string,
     operation: () => Promise<T>,
-    config?: RetryConfig
+    config?: RetryConfig,
   ): Promise<T> {
     const retryConfig = config || this.defaultConfig;
     let context = this.getRetryContext(callId);
-    
+
     if (!context) {
       context = { callId, attempt: 0 };
       this.retryContexts.set(callId, context);
     }
-    
+
     while (true) {
       try {
         const result = await operation();
@@ -89,28 +88,31 @@ export class RetryManager {
       } catch (error) {
         // Update context with error
         context.lastError = error as Error;
-        
+
         // Check if we should retry
-        if (context.attempt >= retryConfig.maxRetries || !this.isRetryableError(error as Error, retryConfig)) {
+        if (
+          context.attempt >= retryConfig.maxRetries ||
+          !this.isRetryableError(error as Error, retryConfig)
+        ) {
           // No more retries - throw the error
           this.retryContexts.delete(callId);
           throw error;
         }
-        
+
         // Increment attempt count
         context.attempt++;
-        
+
         // Calculate backoff
         const backoffMs = this.calculateBackoff(context.attempt, retryConfig);
         context.nextRetryTime = Date.now() + backoffMs;
-        
+
         // Log retry attempt
         if (this.config.getTelemetryEnabled()) {
           // TODO: Implement proper telemetry logging
         }
-        
+
         // Wait for backoff
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
     }
   }
@@ -147,9 +149,9 @@ export class RetryManager {
     if (!error || !error.message) {
       return false;
     }
-    
+
     // Check if any retryable error pattern matches
-    return config.retryableErrors.some(pattern => {
+    return config.retryableErrors.some((pattern) => {
       if (pattern.startsWith('/') && pattern.endsWith('/')) {
         // Regex pattern
         try {

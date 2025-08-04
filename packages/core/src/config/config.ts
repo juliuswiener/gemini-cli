@@ -322,13 +322,24 @@ export class Config {
       retryConfig: {
         maxRetries: params.concurrency?.retryConfig?.maxRetries ?? 3,
         backoffMs: params.concurrency?.retryConfig?.backoffMs ?? 1000,
-        exponentialBackoff: params.concurrency?.retryConfig?.exponentialBackoff ?? true,
-        retryableErrors: params.concurrency?.retryConfig?.retryableErrors ?? ['429', '500', '502', '503', '504', 'ECONNRESET', 'ETIMEDOUT'],
+        exponentialBackoff:
+          params.concurrency?.retryConfig?.exponentialBackoff ?? true,
+        retryableErrors: params.concurrency?.retryConfig?.retryableErrors ?? [
+          '429',
+          '500',
+          '502',
+          '503',
+          '504',
+          'ECONNRESET',
+          'ETIMEDOUT',
+        ],
       },
       fileLocking: {
         enabled: params.concurrency?.fileLocking?.enabled ?? true,
         timeoutMs: params.concurrency?.fileLocking?.timeoutMs ?? 30000,
-        lockDirectory: params.concurrency?.fileLocking?.lockDirectory ?? this.getProjectTempDir(),
+        lockDirectory:
+          params.concurrency?.fileLocking?.lockDirectory ??
+          this.getProjectTempDir(),
       },
     };
 

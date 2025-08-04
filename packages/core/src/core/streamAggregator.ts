@@ -27,7 +27,7 @@ export class StreamAggregator {
   private callMetadata: Map<string, ConcurrentCall>;
 
   constructor(calls: ConcurrentCall[]) {
-    this.callMetadata = new Map(calls.map(call => [call.id, call]));
+    this.callMetadata = new Map(calls.map((call) => [call.id, call]));
   }
 
   /**
@@ -36,7 +36,7 @@ export class StreamAggregator {
    * Individual stream errors are handled gracefully without stopping other streams.
    */
   async *mergeStreams(
-    streams: AsyncGenerator<ServerGeminiStreamEvent>[]
+    streams: Array<AsyncGenerator<ServerGeminiStreamEvent>>,
   ): AsyncGenerator<EnrichedServerGeminiStreamEvent> {
     // Create an array of call IDs in the same order as the calls array
     const callIds = Array.from(this.callMetadata.keys());
@@ -44,10 +44,10 @@ export class StreamAggregator {
       generator,
       callId: callIds[index], // Use the call ID at the same index
       done: false,
-      buffer: [] // Optional: for reordering or buffering if needed later
+      buffer: [], // Optional: for reordering or buffering if needed later
     }));
 
-    while (activeGenerators.some(g => !g.done)) {
+    while (activeGenerators.some((g) => !g.done)) {
       for (const genInfo of activeGenerators) {
         if (genInfo.done) continue;
 
@@ -61,24 +61,29 @@ export class StreamAggregator {
             const enrichedEvent: EnrichedServerGeminiStreamEvent = {
               ...value,
               callId: genInfo.callId,
-              callTitle: originalCall?.prompt || genInfo.callId // Use prompt as title
+              callTitle: originalCall?.prompt || genInfo.callId, // Use prompt as title
             };
             yield enrichedEvent;
           }
         } catch (error) {
           // Basic error handling: log and mark as done, but don't stop other streams
-          console.error(`Stream for call ${genInfo.callId} encountered an error:`, error);
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(
+            `Stream for call ${genInfo.callId} encountered an error:`,
+            error,
+          );
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           const errorEvent: EnrichedServerGeminiStreamEvent = {
             type: GeminiEventType.Error,
             value: {
               error: {
                 message: `Error in call ${genInfo.callId}: ${errorMessage}`,
-                status: undefined
-              }
+                status: undefined,
+              },
             },
             callId: genInfo.callId,
-            callTitle: this.callMetadata.get(genInfo.callId)?.prompt || genInfo.callId
+            callTitle:
+              this.callMetadata.get(genInfo.callId)?.prompt || genInfo.callId,
           };
           yield errorEvent;
           genInfo.done = true;
